@@ -1,0 +1,40 @@
+.ui-tabs .ui-tabs-panel {
+  background: initial;
+}
+
+.ui-contextmenu {
+  z-index: 100;
+}
+.workspace {
+ 
+  height: 100%
+}
+
+.workspace-editor-area {
+ 
+  height: 95%
+}
+
+.workspace-editor {
+ 
+  height: inherit
+}
+
+html,body,.container
+{
+    height:100%;
+}
+.container
+{
+    display:table;
+    width: 100%;
+    margin-top: -50px;
+    padding-top: 50px;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+}
+.row
+{
+    height: 100%;
+    display: table-row;
+}

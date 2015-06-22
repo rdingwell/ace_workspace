@@ -38,23 +38,23 @@ AceWorkspaceEditor.prototype.isDirty = function(){
  return this.$aceEditor.getValue() != this.$originalContent;
 }
 AceWorkspaceEditor.prototype.save = function(params){
-  $(this.$workspace).save(this, params)
+  this.$workspace.save(this, params)
 }
 
 AceWorkspaceEditor.prototype.close = function(params){
-  $(this.$workspace).close(this, params)
+  this.$workspace.close(this, params)
 }
 
 AceWorkspaceEditor.prototype._close = function(){
-    this.$aceEditor.destroy();
-    var panelId =$tab.remove().attr( "aria-controls" );
-    $( "#" + panelId ).remove();
-    $(this.$workspace).workspace( "refresh" );
+  this.$aceEditor.destroy();
+  var panelId =$tab.remove().attr( "aria-controls" );
+  $( "#" + panelId ).remove();
+
 }
 
 AceWorkspaceEditor.prototype.reset = function(){
-  this.$aceEditor.setValue($originalContent);
-  $(this.$workspace).workspace( "refresh" );
+  this.$aceEditor.setValue(this.$originalContent);
+  this.$workspace.refresh()
 }
 
 AceWorkspaceEditor.prototype.destroy = function(){

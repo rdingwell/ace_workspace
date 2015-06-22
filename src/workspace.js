@@ -99,16 +99,17 @@ function Tab(li){
     close: function(editor,params){
      var cls = !editor.isDirty();
       if(!cls){
+        alert("hey its dirty")
         // dialog box asking if to save
         var sv = true;
         if(sv){
           this.save({success: editor.close})
         }else {
-          this._close();
+          editor._close();
         }
       }
 
-      if(cls){this._close()}
+      if(cls){editor._close()}
     },
     save: function(editor, params){
       if(this.delegate){
@@ -136,6 +137,9 @@ function Tab(li){
     _updateTitle: function(editor){
       $("a", editor.$tab).html(editor.name)
     },
+    refresh: function(){
+
+    },
     _create_tab_and_content: function(editor, options) {
       var id = this._next_tab_id()
       var li = $( this.tabTemplate.replace( /#\{href\}/g, "#" + id ).replace( /#\{label\}/g, editor.name ))    
@@ -159,7 +163,7 @@ function Tab(li){
                 self.closeOthers(editor);
               case "closeAll" :
                 self.closeAll();
-              defualt : 
+              default : 
                 if(editor[ui.cmd]){
                   editor[ui.cmd]();
                 } 

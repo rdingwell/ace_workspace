@@ -3,16 +3,10 @@
 <head>
   <meta charset="utf-8">
   <title>jQuery UI Tabs - Sortable</title>
-  <link rel="stylesheet" href="http://code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">
-  <script src="http://code.jquery.com/jquery-1.10.2.js"></script>
-  <script src="http://code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
-  
-
-
-
-
-  
- 
+  <!--<link rel="stylesheet" href="http://code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">-->
+  <script src="bower_components/jquery/dist/jquery.js"></script>
+  <script src="bower_components/jquery-ui/jquery-ui.js"></script>
+  <script src="bower_components/bootstrap/js/dropdown.js"></script>
   <script type="text/javascript">
       var require = {
           baseUrl: window.location.protocol + "//" + window.location.host + window.location.pathname.split("/").slice(0, -1).join("/"),
@@ -27,6 +21,7 @@
           })
        }
       );
+
   </script>
  
   <script src="bower_components/requirejs/require.js"></script>
@@ -37,29 +32,66 @@
   <script src="src/workspace.js"></script>
   <script src="src/ace-workspace-editor.js"></script>
   <script src="src/jquery.ui-contextmenu.js"></script>
-  <link rel="stylesheet" href="stylesheets/ace-workspace.css"/>
+  <!--<link rel="stylesheet" href="stylesheets/ace-workspace.css"/>-->
+  <link rel="stylesheet" href="stylesheets/jquery-ui-theme.css"/>
+  <link rel="stylesheet" href="stylesheets/customization/_menu.css"/>
+  <link rel="stylesheet" href="stylesheets/customization/_nav.css"/>
+  <link rel="stylesheet" href="stylesheets/customization/_header.css"/>
   <link rel="stylesheet" href="bower_components/bootstrap/dist/css/bootstrap.css"/>
   <script>
-
- 
   $(function() {
      $( "#workspace" ).workspace();
      workspace = $( "#workspace" ).workspace("instance");
   });
   </script>
   
+
+<script>
+  $(function() {
+    $( "#menu" ).menu();
+  });
+  </script>
 </head>
 <body>  
-  <button id="addTab" >Add Tab</button>
-  <div class="container">
 
-   <div class="row">
-      <div id="workspace" class="col-sm-6 " >
-        
-      </div>
-  </div>  
+<!-- Start Header  -->
+
+<div id="headerbar" class="container-fluid">
+	<div class="row">
+hello
 
 </div>
+	
+</div>
 
+
+
+      <!-- End Header -->
+
+<!-- Start Action Bar -->
+
+
+<!-- End Action Bar -->
+
+
+  
+  <!--Start Action Bar-->
+  <button id="addTab">Add Tab</button>
+
+  <!--End Action Bar-->
+  
+  
+  <div class="container">
+  	<div class="row" >
+
+   <!-- Start Tabbed UI -->
+      <div id="workspace" class="col-sm-6" >
+   <!-- Start Tabbed UI -->
+     
+    </div>
+  </div>  
+  
+  </div>
+  
 </body>
 </html>

@@ -18,7 +18,7 @@
       };
       $(document).ready(function() {
         $("#addTab").click(function(){
-          workspace.open("","",AceWorkspaceEditor,{ace:window.ace})
+          workspace.open("","",AceWorkspaceEditor,{ace:window.ace,mode:"ace/mode/cql"})
           })
        }
       );
@@ -30,6 +30,7 @@
   <script src="src/ace-build/ext-textarea.js"></script>
   <script src="src/ace-build/ext-statusbar.js"></script>
   <script src="src/workspace.js"></script>
+   <script src="src/repository.js"></script>
   <script src="src/ace-workspace-editor.js"></script>
   <script src="src/jquery.ui-contextmenu.js"></script>
   <link rel="stylesheet" href="stylesheets/ace-workspace.css"/>

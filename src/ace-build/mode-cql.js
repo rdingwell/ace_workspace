@@ -8604,23 +8604,25 @@ cqlLexer.grammarFileName = "cql.g4";
 exports.cqlLexer = cqlLexer;
 });
 
-define("ace/mode/cql/model_manager",["require","exports","module","ace/config"], function(require, exports, module) {
+define("ace/mode/cql/model_manager",["require","exports","module","ace/config","ace/lib/net"], function(require, exports, module) {
   "use strict";
   var config = require("../../config");
+  var net = require("../../lib/net");
    function ModelManager(){
     this.models = {};
 
   }
   ModelManager.prototype.constructor = ModelManager;
   ModelManager.prototype.loadModel = function(model){
-    config.loadModule("./models/"+model, function(m) {
+    var self = this;
+    net.get("./models/"+model+".json", function(m) {
       if (m) {
-        this.models = eval(m);
+        self.models[model] = JSON.parse(m);
       }
     });
   }
   ModelManager.prototype.getModel = function(model) {
-    return [];
+    //return [];
     if( !this.models[model]  ){
       this.loadModel(model);
     }
@@ -8633,7 +8635,33 @@ define("ace/mode/cql/model_manager",["require","exports","module","ace/config"],
 define("ace/mode/cql/model_completer",["require","exports","module","ace/mode/cql/model_manager"], function(require, exports, module) {
 "use strict";
  var ModelManager = require('./model_manager').ModelManager;
-
+ var isRetrieve = function(session, pos){
+  var row = pos.row;
+  var column = pos.column
+  var prev = null;
+  var token = null;
+  while( (token = session.getTokenAt(row,column)) ){
+    if(prev && prev.column == 0) {return false}
+    prev = token;  
+    switch(token.type) {
+      case "paren.lparen":
+        return true;
+        break;
+      case "text" :
+        if (token.value && token.value.trim && token.value.trim() == "" ){
+          column = token.start;
+        }else {
+          return false;
+        }
+        break;  
+      case "identifier":
+        column = token.start 
+        break;
+      default:
+        return false   
+    }
+  }
+ }
   var cqlModelCompleter = {
     getCompletions: function(editor, session, pos, prefix, callback) {
       var cqlModel = session.cqlModel;
@@ -8644,9 +8672,14 @@ define("ace/mode/cql/model_completer",["require","exports","module","ace/mode/cq
           return {name: m, value: m, score: 0, meta: "Valueset"}
          }));
       }
-      if ( cqlModel.data.models) {
+      if ( cqlModel.data.models && isRetrieve(session,pos)) {
         for( var i in cqlModel.data.models){
-          callback(null, ModelManager.getModel(cqlModel.data.models[i]));
+          var mod = ModelManager.getModel(cqlModel.data.models[i]);
+          if(mod && mod.types){
+            callback(null, mod.types.map(function(m){
+               return {name: cqlModel.data.models[i]+"."+m, value: cqlModel.data.models[i]+"."+m, score: 10, meta: cqlModel.data.models[i]}
+            }));
+          }
          }
       }
     }

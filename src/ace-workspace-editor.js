@@ -38,7 +38,8 @@ AceWorkspaceEditor.prototype.isDirty = function(){
  return this.$aceEditor.getValue() != this.$originalContent;
 }
 AceWorkspaceEditor.prototype.save = function(params){
-  this.$workspace.save(this, params)
+  var self = this;
+  this.$workspace.save(this, {success: self.updateOriginalContent})
 }
 
 AceWorkspaceEditor.prototype.close = function(params){
@@ -47,7 +48,7 @@ AceWorkspaceEditor.prototype.close = function(params){
 
 AceWorkspaceEditor.prototype._close = function(){
   this.$aceEditor.destroy();
-  var panelId =$tab.remove().attr( "aria-controls" );
+  var panelId = this.$tab.remove().attr( "aria-controls" );
   $( "#" + panelId ).remove();
 
 }
@@ -78,6 +79,11 @@ AceWorkspaceEditor.prototype.getName = function(){
 
 AceWorkspaceEditor.prototype.getContent = function(){
     this.$aceEditor.getValue()
+}
+
+
+AceWorkspaceEditor.prototype.updateOriginalContent = function(){
+  return this.$originalContent = this.getContent()
 }
 
 AceWorkspaceEditor.prototype.getWorkspace = function(){

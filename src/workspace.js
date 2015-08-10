@@ -69,7 +69,7 @@ function Tab(li){
  
     // Use the destroy method to clean up any modifications your widget has made to the DOM
     destroy: function() {
-      this.editors.each(function(editor){
+      $.each(this.editors,function(index,editor){
          editor.close();
       });
       // In jQuery UI 1.8, you must invoke the destroy method from the base widget
@@ -78,49 +78,73 @@ function Tab(li){
     },
     activeEditor: function(){
       var activeTab = this.tabs.data().uiTabs.active
-      this.editors.each(function(editor){
+      $.each(this.editors,function(index,editor){
         if(editor.$tab == activeTab){
           return editor;
         }
       });
     },
     closeAll: function(){
-      this.editors.each(function(editor){
+      var arr = this.editors.slice()
+      $.each(arr,function(index,editor){
         editor.close();
       });
     },
-    closeOthers: function(tab){
-      this.editors.each(function(editor){
-        if(editor.$tab != tab){
+    closeOthers: function(_editor){
+       var arr = new Array().concat(this.editors)
+      $.each(arr,function(index,editor){
+        if(editor != _editor){
           editor.close();
         }
       });
     },
     close: function(editor,params){
      var cls = !editor.isDirty();
-      if(!cls){
-        alert("hey its dirty")
-        // dialog box asking if to save
-        var sv = true;
-        if(sv){
-          this.save({success: editor.close})
-        }else {
-          editor._close();
-        }
+     if(!cls){
+        this.confirmSave(editor,params)
       }
-
-      if(cls){editor._close()}
+      if(cls){
+        this.unregisterEditor(editor)
+        editor._close()}
+    },
+    confirmSave: function(editor,params) {
+      var self = this;
+      var myDialog = $('<div></div>')
+          .html('Do you want to save the changes you made to '+editor.getName()+' ?')
+          .dialog({
+          autoOpen: true,
+          title: '',   
+          buttons: {
+            "Save": function () {
+              $(this).dialog("close");
+              self.save(editor,{success: editor.close})
+              return true;
+            },
+            "Don't Save": function () {
+              editor._close();
+              $(this).dialog("close");
+              return false;
+            },
+            "Cancel": function () {
+              $(this).dialog("close");
+              return false;
+            }
+          }
+        })
     },
     save: function(editor, params){
       if(this.delegate){
-        this.delegate.save(editor,params);
+        this.delegate.save(editor).then(options.success,options.fail);
       }
     },
     registerEditor: function(editor){
       this.editors.push(editor);
     },
     unregisterEditor: function(editor){
-      this.editors.remove(editor);
+      var index = this.editors.indexOf(editor)
+      if(index >= 0){
+        this.editors.splice(index,1)
+      }
     },
     closeEditor: function(editor){
       this.unregisterEditor(editor);
@@ -147,6 +171,7 @@ function Tab(li){
       this.tabs.find( ".ui-tabs-nav" ).append( li );
       li.data().editor = editor;
       editor.$tab = li
+      self = this;
       $(".workspace-tab").contextmenu({
          
           menu: [
@@ -161,8 +186,10 @@ function Tab(li){
              switch(ui.cmd){
               case "closeOthers":
                 self.closeOthers(editor);
+                break;
               case "closeAll" :
                 self.closeAll();
+                break;
               default : 
                 if(editor[ui.cmd]){
                   editor[ui.cmd]();

@@ -1,10 +1,41 @@
+/** UI Header Customization **/
 
-
-.headerbar {
+#header {
+    background-color:#EAF0FA;
+    color:white;
+    height: 40px;
+    position: relative;
 
 }
 
-.container-fluid {
-	background-color: #EAF0FA;
+#logo	{
+	width: 62px;
+	height:28px;
+	background-repeat:no-repeat;
+	background-position:left center;
+	margin: 0 0 0 0;
+	padding: 6px 0 0 8px;
+	float: left;
+}
+
+#menuContainer {
+	float: left;
+	border-left: 1px solid #8E9FBC;
+	margin: 0 0 0 8px;
+	padding: 0 0 0 10px; 
+
+}
+
+#login {
+	float:right;
+	width:80px;
+	background: #8E9FBC;
+	font-family: 'roboto';
+	font-size: 12px;
+	width: 211px;
 	height: 40px;
+	margin: 0 0 0 0;
+	padding: 10px 0 0 10px; 
+
+	
 }

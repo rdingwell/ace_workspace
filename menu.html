@@ -1,0 +1,50 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Menu</title>
+  <!--<link rel="stylesheet" href="//code.jquery.com/ui/1.11.4/themes/smoothness/jquery-ui.css">-->
+  <script src="//code.jquery.com/jquery-1.10.2.js"></script>
+  <script src="//code.jquery.com/ui/1.11.4/jquery-ui.js"></script>
+  <link rel="stylesheet" type="text/css" href="stylesheets/jquery-ui-theme.css">
+  <link rel="stylesheet" type="text/css" href="stylesheets/customization/_menu.css">
+
+
+<script>
+  $(function() {
+  $( "#menu" ).menu({
+		position: {
+			my:'left bottom-20',
+			at:'left center'
+		}
+	});    
+  });
+</script>
+
+</head>
+<body>
+<ul id="menu">
+  <li class="ui-state-disabled">Menu Item 1</li>
+  <li>Menu Item 2</li>
+  <li>Menu Item 3</li>
+  <li>Menu Item 4</li>
+  <li>Menu Item 5
+    <ul>
+      <li class="ui-state-disabled">Sub Menu Item 1</li>
+      <li>Sub Menu Item 2</li>
+      <li>Sub Menu Item 3</li>
+    </ul>
+  </li>
+  <li>Menu Item 6</li>
+  <li>Menu Item 7
+    <ul>
+      <li>Sub Menu Item 2</li>
+      <li>Sub Menu Item 3</li>
+    </ul>
+  </li>
+  <li class="ui-state-disabled">Menu Item 8</li>
+</ul>
+
+ 
+</body>
+</html>

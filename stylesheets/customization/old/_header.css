@@ -1,7 +1,6 @@
 /** UI Header Customization **/
 
 #header {
-    background-color:#EAF0FA;
     color:white;
     height: 40px;
     position: relative;
@@ -28,7 +27,7 @@
 
 #login {
 	float:right;
-	width:80px;
+	width:auto;
 	background: #8E9FBC;
 	font-family: 'roboto';
 	font-size: 12px;
@@ -36,6 +35,4 @@
 	height: 40px;
 	margin: 0 0 0 0;
 	padding: 10px 0 0 10px; 
-
-	
 }

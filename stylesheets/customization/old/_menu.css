@@ -9,6 +9,7 @@
 	font-family: 'roboto';
 	font-size: 12px;
 	color: #515D70;
+	height: 40px;
 	
 }
 .ui-menu:after {
@@ -61,18 +62,19 @@
 }
 
 .ui-menu-icon, ui-icon ui-icon-carat-1-e {
-	display: none !important;
+	display: none;
 		
 }
 
-.ui-menu, ui-widget-content {
+.ui-menu.ui-widget-content {
 	border: 0px solid #122138;
 	color: #515D70;
-	background: #EAF0FA!important;
-	height: 40px;
+	background: #EAF0FA;
+	
 }
 
-#menu .ui-menu-item ul {
+
+#menu ul  {
 	border: 1px solid #515D70;
 	height: auto;
 	padding-bottom: 8px;
@@ -80,10 +82,12 @@
 
 
 }
-#menu ul li.ui-menu-item {
+#menu ul li {
 	width: 120px;
 
 }
+
+
 
 /**
 

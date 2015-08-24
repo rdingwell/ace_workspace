@@ -1,33 +1,29 @@
 /** Added Bars **/
 
-.ui-tabs .ui-tabs-panel {
-  background: initial;
+@media (min-width: 768px) {
+  .container {
+    width: 750px;
+  }
+}
+@media (min-width: 992px) {
+  .container {
+    width: 970px;
+  }
+}
+@media (min-width: 1200px) {
+  .container {
+    width: 1170px;
+  }
 }
 
-.ui-contextmenu {
-  z-index: 100;
-}
-.workspace {
- 
-  height: 100%
-}
 
-.workspace-editor-area {
- 
-  height: 95%
-}
-
-.workspace-editor {
- 
-  height: inherit
-}
-
-html,body,.container
+html,body,.container 
 {
     height:100%;
 }
-.container
-{
+
+
+.container {
     display:table;
     width: 100%;
     margin-top: -50px;
@@ -35,9 +31,19 @@ html,body,.container
     -moz-box-sizing: border-box;
     box-sizing: border-box;
 }
-.row
-{
-    height: 100%;
-    display: table-row;
-}
 
+.container-fluid {
+  padding-right: 15px;
+  padding-left: 15px;
+  margin-right: auto;
+  margin-left: auto;
+  
+}
+.row {
+  display: table-row;
+  margin-right: -15px;
+  margin-left: -15px;
+  height: 100%;
+  
+ 
+}

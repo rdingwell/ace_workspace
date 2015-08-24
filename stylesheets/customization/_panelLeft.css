@@ -1,0 +1,11 @@
+/** UI Panel Customization **/
+
+#panel {
+    width: 320px;
+    height: 100%;
+    float: left;
+    background: #253247;
+    float: left;
+}
+
+

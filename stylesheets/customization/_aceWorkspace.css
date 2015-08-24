@@ -1,0 +1,17 @@
+/** ACE Workspace Customization **/
+
+
+.workspace {
+ 
+  height: 100%
+}
+
+.workspace-editor-area {
+ 
+  height: 95%
+}
+
+.workspace-editor {
+ 
+  height: inherit
+}

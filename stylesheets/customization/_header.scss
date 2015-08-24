@@ -1,0 +1,34 @@
+$header-color: #EAF0FA ;
+
+
+#header {
+	background: $header-color;
+	color:white;
+    height: 40px;
+    position: relative;	
+    
+    .logo	{
+	width: 62px;
+	height:28px;
+	padding: 6px 0 0 8px;
+	float: left;
+	}
+
+	.menuContainer {
+	float: left;
+	border-left: 1px solid #8E9FBC;
+	margin-left: 8px;
+	padding-right: 10px; 
+	}
+
+	.login {
+	float: right;
+	background: #8E9FBC;
+	font-family: 'roboto';
+	font-size: 12px;
+	width: 211px;
+	height: 40px;
+	padding: 10px 0 0 10px; 
+	}
+
+}

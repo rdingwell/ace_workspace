@@ -11,10 +11,10 @@
 	<LINK rel="stylesheet" type="text/css" href="index_files/jquery.ui.all.css">
 	<LINK rel="stylesheet" type="text/css" href="index_files/layout-default-latest.css">
 	<link rel="stylesheet" type="text/css" href="stylesheets/jquery-ui-theme.css">
-	<link rel="stylesheet" type="text/css" href="stylesheets/customization/_header.css">
-	<link rel="stylesheet" type="text/css" href="stylesheets/customization/_menu.css">
-	
-	
+	<!--<link rel="stylesheet" type="text/css" href="stylesheets/customization/old/_header.css">-->
+	<link rel="stylesheet" type="text/css" href="stylesheets/customization/_panelLeft.css">
+	<link rel="stylesheet" type="text/css" href="stylesheets/customization/_aceWorkspace.css">
+	<link rel="stylesheet" type="text/css" href="stylesheets/customization/all.css">
 
 	<script src="bower_components/jquery/dist/jquery.js"></script>
 	<script src="bower_components/jquery-ui/jquery-ui.js"></script>
@@ -80,7 +80,7 @@
 		$(function() {
 			$( "#menu" ).menu({
 		position: {
-			my:'left bottom-20',
+			my:'left bottom-10',
 			at:'left center'
 			}
 		});    
@@ -111,24 +111,18 @@
     padding:5px; 
 }
 
-#toggle {
-    width: 100px;
-    height: 100px;
-    background: #ccc;
-    float: left;
-}
 
-  
 </style>
 
-	
+
 	
 </HEAD>
 <body>
-
+<!-- START HEADER -->
+<div class="container-fluid">
 <div id="header">
-	<div id="logo"><img src="stylesheets/customization/Images/Everest_Logo.png"></div>
-	<div id="menuContainer">
+	<div class="logo"><img src="stylesheets/customization/Images/Everest_Logo.png"></div>
+		<div class="menuContainer">
 		<ul id="menu">
 			<li class="ui-state-disabled">Menu Item 1</li>
 			<li>Menu Item 2</li>
@@ -149,52 +143,55 @@
     	</ul>
 			</li>
 			<li class="ui-state-disabled">Menu Item 8</li>
-		</ul>
-	</div>	
-	<div id="login">ehathaway@mitre.org</div>
+		</ul>	
+		</div>
+	<div class="login">ehathaway@mitre.org</div>
 </div>
-	
-<div style="clear: both">
-<div id="toggle" style="background-color: red">
-<div style="background-color: red" > 
-London<br>
-Paris<br>
-Tokyo<br>
+<!-- END HEADER -->
+
+<!-- START TREE PANEL -->	
+<div id="panel" class="ui-widget-content ui-corner-all" style="position: relative">
+SELECTION TREE
 </div>
- 
-</div>
+<!-- END TREE PANEL -->
+
 
 <!-- START CONTENT AREA -->
-<div id="section">
-<div style="background-color: green"><button id="addTab">Add Tab</button>
-	<button id="#click" >click here</button>
+<div style="background-color: #253247">
+	<input id="mybutton" type="button" value="Slide" class="ui-state-default ui-corner-all">
+	<button id="addTab" class="ui-state-default ui-corner-all"><span class="ui-icon ui-icon-plusthick"></span> </button>
 </div>
-  	<div class="container">
-  	<div class="row" >
+  	
+  	
+  	<div class="container-fluid" style="background: red; height: 100%">
 
-   <!-- Start Tabbed UI -->
-      <div id="workspace" class="col-sm-6" >
-   <!-- Start Tabbed UI -->
-     
-    </div>
+   <div class="row">
+      <div id="workspace"> <span style="color: white"> hello</span> </div> 
   </div>  
+  	
+  	<!--<div class="row" >
+
+      <div id="workspace" class="col-sm-6"> <p style="color">hello</p>
+     
+    </div
+  </div>-->
   
-  </div>
 
 
-</div>
-
- 
 <script>
-$( "button" ).click(function() {
-  $( "#toggle" ).toggle( "slide" );
-});
-</script>
-
+	//dom ready handler so that the script is executed after the dom is loaded
+jQuery(function () {
+    //register the click handler to an element with id mybutton
+    $('#mybutton').click(function () {
+        $("#panel").toggle("slide");
+    });
+})
+</script>	
 
 <div id="footer">
 Copyright © W3Schools.com
 </div>
 </div>
-</body></BODY>
+</div>
+</BODY>
 </HTML>

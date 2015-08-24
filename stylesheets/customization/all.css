@@ -1,0 +1,65 @@
+#header {
+  background: #EAF0FA;
+  color: white;
+  height: 40px;
+  position: relative; }
+  #header .logo {
+    width: 62px;
+    height: 28px;
+    padding: 6px 0 0 8px;
+    float: left; }
+  #header .menuContainer {
+    float: left;
+    border-left: 1px solid #8E9FBC;
+    margin-left: 8px;
+    padding-right: 10px; }
+  #header .login {
+    float: right;
+    background: #8E9FBC;
+    font-family: 'roboto';
+    font-size: 12px;
+    width: 211px;
+    height: 40px;
+    padding: 10px 0 0 10px; }
+
+.ui-menu {
+  font-family: 'roboto';
+  font-size: 12px;
+  display: block;
+  outline: none;
+  color: #515D70;
+  height: 40px; }
+  .ui-menu .ui-menu-item {
+    display: inline-block;
+    position: relative;
+    cursor: pointer;
+    min-height: 0;
+    /* support: IE7 */
+    /* support: IE10, see #8844 */
+    padding: 10px 10px; }
+  .ui-menu .ui-state-focus, .ui-menu .ui-state-active, .ui-menu .ui-state-hover {
+    margin: 0;
+    color: #7F8B9E;
+    border: none;
+    background: none; }
+  .ui-menu .ui-state-hover {
+    color: #EAF0FA; }
+  .ui-menu .ui-menu-divider {
+    margin: 5px 0;
+    height: 0;
+    font-size: 0;
+    line-height: 0;
+    border-width: 1px 0 0 0; }
+  .ui-menu .ui-menu-icon {
+    background: none; }
+
+#menu {
+  background: #EAF0FA;
+  border: none; }
+  #menu ul {
+    height: auto;
+    padding-bottom: 6px;
+    background: #EAF0FA; }
+  #menu ul li {
+    width: 120px;
+    background: #EAF0FA; }

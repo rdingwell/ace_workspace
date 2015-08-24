@@ -1,0 +1,68 @@
+$menu-color: #515D70;
+$menu-background: #EAF0FA;
+
+
+
+.ui-menu {
+	font-family: 'roboto';
+	font-size: 12px;
+	display: block;
+	outline: none;
+	color: $menu-color;
+	height: 40px;
+	
+	.ui-menu-item {
+		 display: inline-block;
+		 position: relative;
+		 cursor: pointer;
+		 min-height: 0; /* support: IE7 */
+		 /* support: IE10, see #8844 */
+		 padding: 10px 10px;
+	}
+			 
+	.ui-state-focus, .ui-state-active, .ui-state-hover { 
+		margin: 0;
+		color: #7F8B9E;
+		border: none;
+		background: none;
+		}	
+	
+	.ui-state-hover {
+		color: $menu-background;
+	}	
+	
+	.ui-menu-divider {
+		margin: 5px 0;
+		height: 0;
+		font-size: 0;
+		line-height: 0;
+		border-width: 1px 0 0 0;
+	}
+	
+	.ui-menu-icon {
+		background: none;
+	}	
+	
+}
+
+#menu {
+	background: $menu-background;
+	border: none;
+
+	
+	ul {
+		height: auto;
+		padding-bottom: 6px;
+		background: $menu-background;
+		
+	}
+	
+	ul li {
+		width: 120px;
+		background: $menu-background;
+
+	}
+
+}
+
+

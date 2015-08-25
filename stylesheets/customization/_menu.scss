@@ -32,16 +32,22 @@ $menu-background: #EAF0FA;
 	}	
 	
 	.ui-menu-divider {
-		margin: 5px 0;
 		height: 0;
-		font-size: 0;
 		line-height: 0;
 		border-width: 1px 0 0 0;
+		margin-top: 12px;
+		margin-bottom: 0;
+		padding: 0px;
+		border-color: #8E9FBC;
 	}
 	
 	.ui-menu-icon {
 		background: none;
 	}	
+	.ui-icon {
+		margin-top: 10px;
+		
+	}
 	
 }
 
@@ -52,13 +58,15 @@ $menu-background: #EAF0FA;
 	
 	ul {
 		height: auto;
-		padding-bottom: 6px;
+		padding-bottom: 12px;
 		background: $menu-background;
 		
 	}
 	
 	ul li {
-		width: 120px;
+		width: 150px;
+		height: 24px;
+		padding-left: 20px;
 		background: $menu-background;
 
 	}

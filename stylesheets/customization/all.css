@@ -12,7 +12,8 @@
     float: left;
     border-left: 1px solid #8E9FBC;
     margin-left: 8px;
-    padding-right: 10px; }
+    padding-right: 24px;
+    padding-left: 12px; }
   #header .login {
     float: right;
     background: #8E9FBC;
@@ -45,21 +46,33 @@
   .ui-menu .ui-state-hover {
     color: #EAF0FA; }
   .ui-menu .ui-menu-divider {
-    margin: 5px 0;
     height: 0;
-    font-size: 0;
     line-height: 0;
-    border-width: 1px 0 0 0; }
+    border-width: 1px 0 0 0;
+    margin-top: 12px;
+    margin-bottom: 0;
+    padding: 0px;
+    border-color: #8E9FBC; }
   .ui-menu .ui-menu-icon {
     background: none; }
+  .ui-menu .ui-icon {
+    margin-top: 10px; }
 
 #menu {
   background: #EAF0FA;
   border: none; }
   #menu ul {
     height: auto;
-    padding-bottom: 6px;
+    padding-bottom: 12px;
     background: #EAF0FA; }
   #menu ul li {
-    width: 120px;
+    width: 150px;
+    height: 24px;
+    padding-left: 20px;
     background: #EAF0FA; }
+
+.ui-tabs {
+  position: relative;
+  /* position: relative prevents IE scroll bug (element with position: relative inside container with overflow: auto appear as "fixed") */
+  font: "roboto";
+  font-size: 12px; }

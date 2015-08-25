@@ -11,7 +11,6 @@
 	<LINK rel="stylesheet" type="text/css" href="index_files/jquery.ui.all.css">
 	<LINK rel="stylesheet" type="text/css" href="index_files/layout-default-latest.css">
 	<link rel="stylesheet" type="text/css" href="stylesheets/jquery-ui-theme.css">
-	<!--<link rel="stylesheet" type="text/css" href="stylesheets/customization/old/_header.css">-->
 	<link rel="stylesheet" type="text/css" href="stylesheets/customization/_panelLeft.css">
 	<link rel="stylesheet" type="text/css" href="stylesheets/customization/_aceWorkspace.css">
 	<link rel="stylesheet" type="text/css" href="stylesheets/customization/all.css">
@@ -80,7 +79,7 @@
 		$(function() {
 			$( "#menu" ).menu({
 		position: {
-			my:'left bottom-10',
+			my:'left+10 bottom-15',
 			at:'left center'
 			}
 		});    
@@ -109,7 +108,10 @@
     clear:both;
     text-align:center;
     padding:5px; 
+
 }
+
+
 
 
 </style>
@@ -117,65 +119,87 @@
 
 	
 </HEAD>
-<body>
+<body class="ui-layout-container">
 <!-- START HEADER -->
 <div class="container-fluid">
 <div id="header">
 	<div class="logo"><img src="stylesheets/customization/Images/Everest_Logo.png"></div>
 		<div class="menuContainer">
 		<ul id="menu">
-			<li class="ui-state-disabled">Menu Item 1</li>
-			<li>Menu Item 2</li>
-			<li>Menu Item 3</li>
-			<li>Menu Item 4</li>
-			<li>Menu Item 5
-		<ul>
-			<li class="ui-state-disabled">Sub Menu Item 1</li>
-			<li>Sub Menu Item 2</li>
-			<li>Sub Menu Item 3</li>
-    	</ul>
+			<li>File
+			<ul>
+			<li class="ui-state-disabled">File Sub Menu 1</li>
+			<li>File Sub Menu 2</li>
+			<div class="ui-menu-divider"></div>
+			<li><span class="ui-icon ui-icon-star"></span>File Sub Menu 3</li>
+    		</ul>	
 			</li>
-			<li>Menu Item 6</li>
-			<li>Menu Item 7
-		<ul>
-			<li>Sub Menu Item 2</li>
-			<li>Sub Menu Item 3</li>
-    	</ul>
+			<li>Edit
+			<ul>
+			<li class="ui-state-disabled">Edit Sub Menu 1</li>
+			<li>Edit Sub Menu 2</li>
+			<li>Edit Sub Menu 3</li>
+    		</ul>	
 			</li>
-			<li class="ui-state-disabled">Menu Item 8</li>
-		</ul>	
+			<li>Find
+			<ul>
+			<li>Find Sub Menu 1</li>
+			<li>Find Sub Menu 2</li>
+			<li>Find Sub Menu 3</li>
+    		</ul>
+			</li>
+			<li>View
+			<ul>
+			<li class="ui-state-disabled">View Sub Menu 1</li>
+			<li>View Sub Menu 2</li>
+			<li>View Sub Menu 3</li>
+    		</ul>
+			</li>
+			<li>Preferences
+			<ul>
+				<li class="ui-state-disabled">Pref Menu Item 1</li>
+				<li>Pref Menu Item 2</li>
+				<li>Pref Menu Item 3</li>
+	    	</ul>
+			</li>
+			<li>Help
+			<ul>
+				<li class="ui-state-disabled">Pref Menu Item 1</li>
+				<li ><span class="ui-icon ui-icon-print"></span>Pref Menu Item 2</li>
+				<li>Pref Menu Item 3</li>
+	    	</ul>
+			</li>
 		</div>
 	<div class="login">ehathaway@mitre.org</div>
 </div>
 <!-- END HEADER -->
 
-<!-- START TREE PANEL -->	
-<div id="panel" class="ui-widget-content ui-corner-all" style="position: relative">
+
+	<!-- START TREE PANEL -->	
+<div id="panel" class="ui-widget-content" style="float: left">
 SELECTION TREE
 </div>
 <!-- END TREE PANEL -->
 
 
-<!-- START CONTENT AREA -->
-<div style="background-color: #253247">
+<div style="background-color: aqua;">
 	<input id="mybutton" type="button" value="Slide" class="ui-state-default ui-corner-all">
-	<button id="addTab" class="ui-state-default ui-corner-all"><span class="ui-icon ui-icon-plusthick"></span> </button>
-</div>
-  	
-  	
-  	<div class="container-fluid" style="background: red; height: 100%">
+	<button id="addTab" >Add Tab</button>
+	</div>
+
+<!-- START CONTENT AREA -->
+
+  <div class="container">
 
    <div class="row">
-      <div id="workspace"> <span style="color: white"> hello</span> </div> 
+      <div id="workspace" class="col-sm-6 " >
+        
+      </div>
   </div>  
-  	
-  	<!--<div class="row" >
 
-      <div id="workspace" class="col-sm-6"> <p style="color">hello</p>
-     
-    </div
-  </div>-->
-  
+</div>
+	
+	
 
 
 <script>
@@ -187,10 +211,10 @@ jQuery(function () {
     });
 })
 </script>	
-
-<div id="footer">
+<!--
+<div id="footer" style="position: fixed">
 Copyright © W3Schools.com
-</div>
+</div>-->
 </div>
 </div>
 </BODY>

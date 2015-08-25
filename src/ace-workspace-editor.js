@@ -8,7 +8,7 @@ function AceWorkspaceEditor(workspace, name , content ,options){
   this.$workspace = workspace;
   //this.$id = id;
   this.$tab = null;
-  this.$contentElement = null; 
+  this.$contentElement = null;
   this.$aceEditor = null;
   this.$aceSession = null;
   this.$ace = options.ace || window.ace;
@@ -78,7 +78,7 @@ AceWorkspaceEditor.prototype.getName = function(){
 }
 
 AceWorkspaceEditor.prototype.getContent = function(){
-    this.$aceEditor.getValue()
+  return this.$aceEditor.getValue()
 }
 
 
@@ -89,4 +89,3 @@ AceWorkspaceEditor.prototype.updateOriginalContent = function(){
 AceWorkspaceEditor.prototype.getWorkspace = function(){
   return $(this.$workspace);
 }
-

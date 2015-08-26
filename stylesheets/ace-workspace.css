@@ -1,49 +1,59 @@
-/** Added Bars **/
+
+
+.ace-container {
+  padding-right: 15px;
+  padding-left: 15px;
+  margin-right: 0;
+  margin-left: 0;
+  float: left;
+  display: flex;
+  position: relative;
+}
+
 
 @media (min-width: 768px) {
-  .container {
-    width: 750px;
+  .ace-container {
+    width: auto;
   }
 }
 @media (min-width: 992px) {
-  .container {
-    width: 970px;
+  .ace-container {
+    width: auto;
   }
 }
 @media (min-width: 1200px) {
-  .container {
-    width: 1170px;
+  .ace-container {
+    width: auto;
   }
 }
 
-
-html,body,.container 
-{
-    height:100%;
-}
-
-
-.container {
-    display:table;
-    width: 100%;
-    margin-top: -50px;
-    padding-top: 50px;
-    -moz-box-sizing: border-box;
-    box-sizing: border-box;
-}
-
-.container-fluid {
-  padding-right: 15px;
-  padding-left: 15px;
-  margin-right: auto;
-  margin-left: auto;
-  
-}
 .row {
-  display: table-row;
-  margin-right: -15px;
-  margin-left: -15px;
-  height: 100%;
+  margin-right: 0px;
+  margin-left: 0px;
+  width: 850px;
   
- 
+  
 }
+
+.workspace {
+	
+}
+
+
+.workspace.ui-widget-content {
+	background: none;
+}
+
+
+.workspace-editor-area { 
+	height: 95%
+
+}
+
+.workspace-editor {
+  height: inherit
+}
+
+
+
+

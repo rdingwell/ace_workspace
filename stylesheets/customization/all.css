@@ -23,6 +23,13 @@
     height: 40px;
     padding: 10px 0 0 10px; }
 
+.actionBar {
+  background: #253247;
+  height: 32px;
+  margin-bottom: 4px;
+  padding-left: 10px;
+  padding-top: 2px; }
+
 .ui-menu {
   font-family: 'roboto';
   font-size: 12px;
@@ -71,8 +78,18 @@
     padding-left: 20px;
     background: #EAF0FA; }
 
+.workspace-tabs {
+  height: 33px; }
+
 .ui-tabs {
   position: relative;
   /* position: relative prevents IE scroll bug (element with position: relative inside container with overflow: auto appear as "fixed") */
   font: "roboto";
   font-size: 12px; }
+
+.treepanel {
+  width: 250px;
+  float: left;
+  background: #253247;
+  float: left;
+  border-right: 1px solid #EAF0FA; }

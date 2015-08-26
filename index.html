@@ -7,12 +7,9 @@
 	<TITLE>Everest Editor</TITLE>
 	
 
-
-	<LINK rel="stylesheet" type="text/css" href="index_files/jquery.ui.all.css">
-	<LINK rel="stylesheet" type="text/css" href="index_files/layout-default-latest.css">
 	<link rel="stylesheet" type="text/css" href="stylesheets/jquery-ui-theme.css">
-	<link rel="stylesheet" type="text/css" href="stylesheets/customization/_panelLeft.css">
-	<link rel="stylesheet" type="text/css" href="stylesheets/customization/_aceWorkspace.css">
+	<link rel="stylesheet" href="bower_components/bootstrap/dist/css/bootstrap.css"/>
+	<link rel="stylesheet" href="stylesheets/ace-workspace.css"/>
 	<link rel="stylesheet" type="text/css" href="stylesheets/customization/all.css">
 
 	<script src="bower_components/jquery/dist/jquery.js"></script>
@@ -34,36 +31,17 @@
 
   </script>
   <!-- ACE WORKSPACE -->
+  <script src="bower_components/requirejs/require.js"></script>
   <script src="src/ace-build/ace.js"></script>
   <script src="src/ace-build/ext-settings_menu.js"></script>
   <script src="src/ace-build/ext-textarea.js"></script>
   <script src="src/ace-build/ext-statusbar.js"></script>
   <script src="src/workspace.js"></script>
   <script src="src/ace-workspace-editor.js"></script>
-  <link rel="stylesheet" href="stylesheets/ace-workspace.css"/>
 
  <!-- BOWER COMPONETS -->
   <script src="bower_components/requirejs/require.js"></script>
-  <link rel="stylesheet" href="bower_components/bootstrap/dist/css/bootstrap.css"/>
   
-
-
-
-	<STYLE type="text/css">
-	/* Using an 'optional-container' instead of 'body', so need body to have a 'height' */
-	html, body {
-		width:		100%;
-		height:		100%;
-		padding:	0;
-		margin:		0;
-		overflow:	hidden !important;
-	}
-	#optional-container {
-		width:			100%;
-		height:			100%;
-	}
-	.ui-layout-center { overflow: hidden; }
-	</STYLE>
 
 	<!--<SCRIPT type="text/javascript" src="index_files/jquery-latest.js"></SCRIPT>-->
 	<!--<SCRIPT type="text/javascript" src="index_files/jquery-ui-latest.js"></SCRIPT>-->
@@ -86,42 +64,12 @@
   	});
 	</script>
 	
-	
-<style>
-
-#nav {
-    line-height:30px;
-    background-color:#eeeeee;
-    height:300px;
-    width:100px;
-    float:left;
-    padding:5px; 
-}
-#section {
-    width:auto;
-    float:left;
-    height: auto;
-}
-#footer {
-    background-color:black;
-    color:white;
-    clear:both;
-    text-align:center;
-    padding:5px; 
-
-}
-
-
-
-
-</style>
-
 
 	
 </HEAD>
-<body class="ui-layout-container">
+<body>
 <!-- START HEADER -->
-<div class="container-fluid">
+
 <div id="header">
 	<div class="logo"><img src="stylesheets/customization/Images/Everest_Logo.png"></div>
 		<div class="menuContainer">
@@ -171,30 +119,34 @@
 			</li>
 		</div>
 	<div class="login">ehathaway@mitre.org</div>
+	
+
 </div>
+
+<div class="actionBar">
+	<input id="mybutton" type="button" value="Slide" class="ui-state-default ui-corner-all ui-button-icon-only">
+	<button id="addTab" class="icon">Add Tab</button>
+</div>
+
+
+
 <!-- END HEADER -->
 
-
+  <div class="ace-container" >
 	<!-- START TREE PANEL -->	
-<div id="panel" class="ui-widget-content" style="float: left">
-SELECTION TREE
+<div id="panel" class="treepanel ui-widget-content">
+add tree selector
 </div>
 <!-- END TREE PANEL -->
 
 
-<div style="background-color: aqua;">
-	<input id="mybutton" type="button" value="Slide" class="ui-state-default ui-corner-all">
-	<button id="addTab" >Add Tab</button>
-	</div>
 
 <!-- START CONTENT AREA -->
 
-  <div class="container">
 
    <div class="row">
-      <div id="workspace" class="col-sm-6 " >
-        
-      </div>
+   	   
+	<div id="workspace" ></div>
   </div>  
 
 </div>
@@ -215,7 +167,6 @@ jQuery(function () {
 <div id="footer" style="position: fixed">
 Copyright © W3Schools.com
 </div>-->
-</div>
 </div>
 </BODY>
 </HTML>

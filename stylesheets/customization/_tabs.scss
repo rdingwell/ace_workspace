@@ -2,9 +2,21 @@ $ui-tabs-font: 'roboto';
 
 
 
+.workspace-tabs {
+	height: 33px;
+}
+
 .ui-tabs {
 	position: relative;/* position: relative prevents IE scroll bug (element with position: relative inside container with overflow: auto appear as "fixed") */
 	font: $ui-tabs-font;
 	font-size: 12px;
 	
+	.ui-tabs-nav {
+		
+	}
+	
+	
+
+
 }
+

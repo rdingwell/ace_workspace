@@ -34,7 +34,7 @@ function Tab(li){
      // close icon: removing the tab on click
       this.tabs.delegate( "span.ui-icon-close", "click", function() {
         var li = $( this ).closest( "li" );
-        var editor = li.editor
+        var editor = li.data().editor
         if(editor){
           editor.close();
         }else{

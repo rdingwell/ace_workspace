@@ -20,10 +20,10 @@ AceWorkspaceEditor.prototype._initializeView = function(div){
   this.$aceEditor.setTheme(this.options.theme);
   this.$aceEditor.getSession().setMode(this.options.mode);
   this.$aceEditor.setOptions({
-    "enableBasicAutocompletion": true,
-    "enableLiveAutocompletion": true,
-    "enableSnippets": true
-  });
+        enableBasicAutocompletion: true,
+        enableSnippets: true,
+        enableLiveAutocompletion: false
+    });
  this.$aceEditor.setValue(this.$originalContent);
 }
 

@@ -639,7 +639,7 @@ oop.inherits(Mode, TextMode);
 
     this.blockComment = {start: "<!--", end: "-->"};
 
-     this.createWorker = function(session) {
+    this.createWorker = function(session) {
         var worker = new WorkerClient(["ace"], "ace/mode/xml_worker", "Worker");
         worker.attachToDocument(session.getDocument());
 

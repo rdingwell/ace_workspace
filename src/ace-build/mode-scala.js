@@ -680,8 +680,8 @@ var CstyleBehaviour = function() {
                 if (leftChar == "\\" && token && /escape/.test(token.type))
                     return null;
                 
-                var stringBefore = token && /string/.test(token.type);
-                var stringAfter = !rightToken || /string/.test(rightToken.type);
+                var stringBefore = token && /string|escape/.test(token.type);
+                var stringAfter = !rightToken || /string|escape/.test(rightToken.type);
                 
                 var pair;
                 if (rightChar == quote) {
@@ -1032,10 +1032,13 @@ var DocCommentHighlightRules = require("./doc_comment_highlight_rules").DocComme
 var TextHighlightRules = require("./text_highlight_rules").TextHighlightRules;
 
 var ScalaHighlightRules = function() {
+
     var keywords = (
-            "case|default|do|else|for|if|match|while|throw|return|try|catch|finally|yield|" +
-            "abstract|class|def|extends|final|forSome|implicit|implicits|import|lazy|new|object|" +
-            "override|package|private|protected|sealed|super|this|trait|type|val|var|with"
+            "case|default|do|else|for|if|match|while|throw|return|try|trye|catch|finally|yield|" +
+            "abstract|class|def|extends|final|forSome|implicit|implicits|import|lazy|new|object|null|" +
+            "override|package|private|protected|sealed|super|this|trait|type|val|var|with|" +
+            "assert|assume|require|print|println|printf|readLine|readBoolean|readByte|readShort|" + // package scala
+            "readChar|readInt|readLong|readFloat|readDouble" // package scala
     );
 
     var buildinConstants = ("true|false");
@@ -1067,7 +1070,13 @@ var ScalaHighlightRules = function() {
         "Exception|ThreadDeath|Error|Throwable|System|ClassLoader|"+
         "Cloneable|Class|CharSequence|Comparable|String|Object|" +
         "Unit|Any|AnyVal|AnyRef|Null|ScalaObject|Singleton|Seq|Iterable|List|" +
-        "Option|Array|Char|Byte|Short|Int|Long|Nothing"
+        "Option|Array|Char|Byte|Int|Long|Nothing|" +
+
+        "App|Application|BufferedIterator|BigDecimal|BigInt|Console|Either|" +
+        "Enumeration|Equiv|Fractional|Function|IndexedSeq|Integral|Iterator|" +
+        "Map|Numeric|Nil|NotNull|Ordered|Ordering|PartialFunction|PartialOrdering|" +
+        "Product|Proxy|Range|Responder|Seq|Serializable|Set|Specializable|Stream|" +
+        "StringContext|Symbol|Traversable|TraversableOnce|Tuple|Vector|Pair|Triple"
 
 
     );

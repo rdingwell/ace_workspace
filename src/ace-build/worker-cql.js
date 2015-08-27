@@ -1,8 +1,9 @@
 "no use strict";
 ;(function(window) {
-if (typeof window.window != "undefined" && window.document) {
+if (typeof window.window != "undefined" && window.document)
     return;
-}
+if (window.require && window.define)
+    return;
 
 window.console = function() {
     var msgs = Array.prototype.slice.call(arguments, 0);
@@ -19,6 +20,7 @@ window.ace = window;
 window.onerror = function(message, file, line, col, err) {
     postMessage({type: "error", data: {
         message: message,
+        data: err.data,
         file: file,
         line: line, 
         col: col,
@@ -37,7 +39,7 @@ window.normalizeModule = function(parentId, moduleName) {
         var base = parentId.split("/").slice(0, -1).join("/");
         moduleName = (base ? base + "/" : "") + moduleName;
         
-        while(moduleName.indexOf(".") !== -1 && previous != moduleName) {
+        while (moduleName.indexOf(".") !== -1 && previous != moduleName) {
             var previous = moduleName;
             moduleName = moduleName.replace(/^\.\//, "").replace(/\/\.\//, "/").replace(/[^\/]+\/\.\.\//, "");
         }
@@ -46,7 +48,7 @@ window.normalizeModule = function(parentId, moduleName) {
     return moduleName;
 };
 
-window.require = function(parentId, id) {
+window.require = function require(parentId, id) {
     if (!id) {
         id = parentId;
         parentId = null;
@@ -64,17 +66,36 @@ window.require = function(parentId, id) {
         }
         return module.exports;
     }
-    
-    var chunks = id.split("/");
+   
     if (!window.require.tlns)
         return console.log("unable to load " + id);
-    chunks[0] = window.require.tlns[chunks[0]] || chunks[0];
-    var path = chunks.join("/") + ".js";
+    
+    var path = resolveModuleId(id, window.require.tlns);
+    if (path.slice(-3) != ".js") path += ".js";
     
     window.require.id = id;
+    window.require.modules[id] = {}; // prevent infinite loop on broken modules
     importScripts(path);
     return window.require(parentId, id);
 };
+function resolveModuleId(id, paths) {
+    var testPath = id, tail = "";
+    while (testPath) {
+        var alias = paths[testPath];
+        if (typeof alias == "string") {
+            return alias + tail;
+        } else if (alias) {
+            return  alias.location.replace(/\/*$/, "/") + (tail || alias.main || alias.name);
+        } else if (alias === false) {
+            return "";
+        }
+        var i = testPath.lastIndexOf("/");
+        if (i === -1) break;
+        tail = testPath.substr(i) + tail;
+        testPath = testPath.slice(0, i);
+    }
+    return id;
+}
 window.require.modules = {};
 window.require.tlns = {};
 
@@ -100,9 +121,9 @@ window.define = function(id, deps, factory) {
     }
 
     if (!deps.length)
-        // If there is no dependencies, we inject 'require', 'exports' and
-        // 'module' as dependencies, to provide CommonJS compatibility.
-        deps = ['require', 'exports', 'module'];
+        // If there is no dependencies, we inject "require", "exports" and
+        // "module" as dependencies, to provide CommonJS compatibility.
+        deps = ["require", "exports", "module"];
 
     var req = function(childId) {
         return window.require(id, childId);
@@ -113,16 +134,16 @@ window.define = function(id, deps, factory) {
         factory: function() {
             var module = this;
             var returnExports = factory.apply(this, deps.map(function(dep) {
-              switch(dep) {
-                  // Because 'require', 'exports' and 'module' aren't actual
-                  // dependencies, we must handle them seperately.
-                  case 'require': return req;
-                  case 'exports': return module.exports;
-                  case 'module':  return module;
-                  // But for all other dependencies, we can just go ahead and
-                  // require them.
-                  default:        return req(dep);
-              }
+                switch (dep) {
+                    // Because "require", "exports" and "module" aren't actual
+                    // dependencies, we must handle them seperately.
+                    case "require": return req;
+                    case "exports": return module.exports;
+                    case "module":  return module;
+                    // But for all other dependencies, we can just go ahead and
+                    // require them.
+                    default:        return req(dep);
+                }
             }));
             if (returnExports)
                 module.exports = returnExports;
@@ -131,9 +152,10 @@ window.define = function(id, deps, factory) {
     };
 };
 window.define.amd = {};
-
+require.tlns = {};
 window.initBaseUrls  = function initBaseUrls(topLevelNamespaces) {
-    require.tlns = topLevelNamespaces;
+    for (var i in topLevelNamespaces)
+        require.tlns[i] = topLevelNamespaces[i];
 };
 
 window.initSender = function initSender() {
@@ -173,21 +195,23 @@ var sender = window.sender = null;
 
 window.onmessage = function(e) {
     var msg = e.data;
-    if (msg.command) {
+    if (msg.event && sender) {
+        sender._signal(msg.event, msg.data);
+    }
+    else if (msg.command) {
         if (main[msg.command])
             main[msg.command].apply(main, msg.args);
+        else if (window[msg.command])
+            window[msg.command].apply(window, msg.args);
         else
             throw new Error("Unknown command:" + msg.command);
     }
-    else if (msg.init) {        
-        initBaseUrls(msg.tlns);
+    else if (msg.init) {
+        window.initBaseUrls(msg.tlns);
         require("ace/lib/es5-shim");
-        sender = window.sender = initSender();
+        sender = window.sender = window.initSender();
         var clazz = require(msg.module)[msg.classname];
         main = window.main = new clazz(sender);
-    } 
-    else if (msg.event && sender) {
-        sender._signal(msg.event, msg.data);
     }
 };
 })(this);
@@ -217,132 +241,6 @@ exports.mixin = function(obj, mixin) {
 exports.implement = function(proto, mixin) {
     exports.mixin(proto, mixin);
 };
-
-});
-
-define("ace/lib/event_emitter",["require","exports","module"], function(require, exports, module) {
-"use strict";
-
-var EventEmitter = {};
-var stopPropagation = function() { this.propagationStopped = true; };
-var preventDefault = function() { this.defaultPrevented = true; };
-
-EventEmitter._emit =
-EventEmitter._dispatchEvent = function(eventName, e) {
-    this._eventRegistry || (this._eventRegistry = {});
-    this._defaultHandlers || (this._defaultHandlers = {});
-
-    var listeners = this._eventRegistry[eventName] || [];
-    var defaultHandler = this._defaultHandlers[eventName];
-    if (!listeners.length && !defaultHandler)
-        return;
-
-    if (typeof e != "object" || !e)
-        e = {};
-
-    if (!e.type)
-        e.type = eventName;
-    if (!e.stopPropagation)
-        e.stopPropagation = stopPropagation;
-    if (!e.preventDefault)
-        e.preventDefault = preventDefault;
-
-    listeners = listeners.slice();
-    for (var i=0; i<listeners.length; i++) {
-        listeners[i](e, this);
-        if (e.propagationStopped)
-            break;
-    }
-    
-    if (defaultHandler && !e.defaultPrevented)
-        return defaultHandler(e, this);
-};
-
-
-EventEmitter._signal = function(eventName, e) {
-    var listeners = (this._eventRegistry || {})[eventName];
-    if (!listeners)
-        return;
-    listeners = listeners.slice();
-    for (var i=0; i<listeners.length; i++)
-        listeners[i](e, this);
-};
-
-EventEmitter.once = function(eventName, callback) {
-    var _self = this;
-    callback && this.addEventListener(eventName, function newCallback() {
-        _self.removeEventListener(eventName, newCallback);
-        callback.apply(null, arguments);
-    });
-};
-
-
-EventEmitter.setDefaultHandler = function(eventName, callback) {
-    var handlers = this._defaultHandlers
-    if (!handlers)
-        handlers = this._defaultHandlers = {_disabled_: {}};
-    
-    if (handlers[eventName]) {
-        var old = handlers[eventName];
-        var disabled = handlers._disabled_[eventName];
-        if (!disabled)
-            handlers._disabled_[eventName] = disabled = [];
-        disabled.push(old);
-        var i = disabled.indexOf(callback);
-        if (i != -1) 
-            disabled.splice(i, 1);
-    }
-    handlers[eventName] = callback;
-};
-EventEmitter.removeDefaultHandler = function(eventName, callback) {
-    var handlers = this._defaultHandlers
-    if (!handlers)
-        return;
-    var disabled = handlers._disabled_[eventName];
-    
-    if (handlers[eventName] == callback) {
-        var old = handlers[eventName];
-        if (disabled)
-            this.setDefaultHandler(eventName, disabled.pop());
-    } else if (disabled) {
-        var i = disabled.indexOf(callback);
-        if (i != -1)
-            disabled.splice(i, 1);
-    }
-};
-
-EventEmitter.on =
-EventEmitter.addEventListener = function(eventName, callback, capturing) {
-    this._eventRegistry = this._eventRegistry || {};
-
-    var listeners = this._eventRegistry[eventName];
-    if (!listeners)
-        listeners = this._eventRegistry[eventName] = [];
-
-    if (listeners.indexOf(callback) == -1)
-        listeners[capturing ? "unshift" : "push"](callback);
-    return callback;
-};
-
-EventEmitter.off =
-EventEmitter.removeListener =
-EventEmitter.removeEventListener = function(eventName, callback) {
-    this._eventRegistry = this._eventRegistry || {};
-
-    var listeners = this._eventRegistry[eventName];
-    if (!listeners)
-        return;
-
-    var index = listeners.indexOf(callback);
-    if (index !== -1)
-        listeners.splice(index, 1);
-};
-
-EventEmitter.removeAllListeners = function(eventName) {
-    if (this._eventRegistry) this._eventRegistry[eventName] = [];
-};
-
-exports.EventEmitter = EventEmitter;
 
 });
 
@@ -585,6 +483,197 @@ Range.comparePoints = function(p1, p2) {
 exports.Range = Range;
 });
 
+define("ace/apply_delta",["require","exports","module"], function(require, exports, module) {
+"use strict";
+
+function throwDeltaError(delta, errorText){
+    console.log("Invalid Delta:", delta);
+    throw "Invalid Delta: " + errorText;
+}
+
+function positionInDocument(docLines, position) {
+    return position.row    >= 0 && position.row    <  docLines.length &&
+           position.column >= 0 && position.column <= docLines[position.row].length;
+}
+
+function validateDelta(docLines, delta) {
+    if (delta.action != "insert" && delta.action != "remove")
+        throwDeltaError(delta, "delta.action must be 'insert' or 'remove'");
+    if (!(delta.lines instanceof Array))
+        throwDeltaError(delta, "delta.lines must be an Array");
+    if (!delta.start || !delta.end)
+       throwDeltaError(delta, "delta.start/end must be an present");
+    var start = delta.start;
+    if (!positionInDocument(docLines, delta.start))
+        throwDeltaError(delta, "delta.start must be contained in document");
+    var end = delta.end;
+    if (delta.action == "remove" && !positionInDocument(docLines, end))
+        throwDeltaError(delta, "delta.end must contained in document for 'remove' actions");
+    var numRangeRows = end.row - start.row;
+    var numRangeLastLineChars = (end.column - (numRangeRows == 0 ? start.column : 0));
+    if (numRangeRows != delta.lines.length - 1 || delta.lines[numRangeRows].length != numRangeLastLineChars)
+        throwDeltaError(delta, "delta.range must match delta lines");
+}
+
+exports.applyDelta = function(docLines, delta, doNotValidate) {
+    
+    var row = delta.start.row;
+    var startColumn = delta.start.column;
+    var line = docLines[row] || "";
+    switch (delta.action) {
+        case "insert":
+            var lines = delta.lines;
+            if (lines.length === 1) {
+                docLines[row] = line.substring(0, startColumn) + delta.lines[0] + line.substring(startColumn);
+            } else {
+                var args = [row, 1].concat(delta.lines);
+                docLines.splice.apply(docLines, args);
+                docLines[row] = line.substring(0, startColumn) + docLines[row];
+                docLines[row + delta.lines.length - 1] += line.substring(startColumn);
+            }
+            break;
+        case "remove":
+            var endColumn = delta.end.column;
+            var endRow = delta.end.row;
+            if (row === endRow) {
+                docLines[row] = line.substring(0, startColumn) + line.substring(endColumn);
+            } else {
+                docLines.splice(
+                    row, endRow - row + 1,
+                    line.substring(0, startColumn) + docLines[endRow].substring(endColumn)
+                );
+            }
+            break;
+    }
+}
+});
+
+define("ace/lib/event_emitter",["require","exports","module"], function(require, exports, module) {
+"use strict";
+
+var EventEmitter = {};
+var stopPropagation = function() { this.propagationStopped = true; };
+var preventDefault = function() { this.defaultPrevented = true; };
+
+EventEmitter._emit =
+EventEmitter._dispatchEvent = function(eventName, e) {
+    this._eventRegistry || (this._eventRegistry = {});
+    this._defaultHandlers || (this._defaultHandlers = {});
+
+    var listeners = this._eventRegistry[eventName] || [];
+    var defaultHandler = this._defaultHandlers[eventName];
+    if (!listeners.length && !defaultHandler)
+        return;
+
+    if (typeof e != "object" || !e)
+        e = {};
+
+    if (!e.type)
+        e.type = eventName;
+    if (!e.stopPropagation)
+        e.stopPropagation = stopPropagation;
+    if (!e.preventDefault)
+        e.preventDefault = preventDefault;
+
+    listeners = listeners.slice();
+    for (var i=0; i<listeners.length; i++) {
+        listeners[i](e, this);
+        if (e.propagationStopped)
+            break;
+    }
+    
+    if (defaultHandler && !e.defaultPrevented)
+        return defaultHandler(e, this);
+};
+
+
+EventEmitter._signal = function(eventName, e) {
+    var listeners = (this._eventRegistry || {})[eventName];
+    if (!listeners)
+        return;
+    listeners = listeners.slice();
+    for (var i=0; i<listeners.length; i++)
+        listeners[i](e, this);
+};
+
+EventEmitter.once = function(eventName, callback) {
+    var _self = this;
+    callback && this.addEventListener(eventName, function newCallback() {
+        _self.removeEventListener(eventName, newCallback);
+        callback.apply(null, arguments);
+    });
+};
+
+
+EventEmitter.setDefaultHandler = function(eventName, callback) {
+    var handlers = this._defaultHandlers
+    if (!handlers)
+        handlers = this._defaultHandlers = {_disabled_: {}};
+    
+    if (handlers[eventName]) {
+        var old = handlers[eventName];
+        var disabled = handlers._disabled_[eventName];
+        if (!disabled)
+            handlers._disabled_[eventName] = disabled = [];
+        disabled.push(old);
+        var i = disabled.indexOf(callback);
+        if (i != -1) 
+            disabled.splice(i, 1);
+    }
+    handlers[eventName] = callback;
+};
+EventEmitter.removeDefaultHandler = function(eventName, callback) {
+    var handlers = this._defaultHandlers
+    if (!handlers)
+        return;
+    var disabled = handlers._disabled_[eventName];
+    
+    if (handlers[eventName] == callback) {
+        var old = handlers[eventName];
+        if (disabled)
+            this.setDefaultHandler(eventName, disabled.pop());
+    } else if (disabled) {
+        var i = disabled.indexOf(callback);
+        if (i != -1)
+            disabled.splice(i, 1);
+    }
+};
+
+EventEmitter.on =
+EventEmitter.addEventListener = function(eventName, callback, capturing) {
+    this._eventRegistry = this._eventRegistry || {};
+
+    var listeners = this._eventRegistry[eventName];
+    if (!listeners)
+        listeners = this._eventRegistry[eventName] = [];
+
+    if (listeners.indexOf(callback) == -1)
+        listeners[capturing ? "unshift" : "push"](callback);
+    return callback;
+};
+
+EventEmitter.off =
+EventEmitter.removeListener =
+EventEmitter.removeEventListener = function(eventName, callback) {
+    this._eventRegistry = this._eventRegistry || {};
+
+    var listeners = this._eventRegistry[eventName];
+    if (!listeners)
+        return;
+
+    var index = listeners.indexOf(callback);
+    if (index !== -1)
+        listeners.splice(index, 1);
+};
+
+EventEmitter.removeAllListeners = function(eventName) {
+    if (this._eventRegistry) this._eventRegistry[eventName] = [];
+};
+
+exports.EventEmitter = EventEmitter;
+
+});
+
 define("ace/anchor",["require","exports","module","ace/lib/oop","ace/lib/event_emitter"], function(require, exports, module) {
 "use strict";
 
@@ -611,70 +700,46 @@ var Anchor = exports.Anchor = function(doc, row, column) {
         return this.document;
     };
     this.$insertRight = false;
-    this.onChange = function(e) {
-        var delta = e.data;
-        var range = delta.range;
-
-        if (range.start.row == range.end.row && range.start.row != this.row)
+    this.onChange = function(delta) {
+        if (delta.start.row == delta.end.row && delta.start.row != this.row)
             return;
 
-        if (range.start.row > this.row)
+        if (delta.start.row > this.row)
             return;
-
-        if (range.start.row == this.row && range.start.column > this.column)
-            return;
-
-        var row = this.row;
-        var column = this.column;
-        var start = range.start;
-        var end = range.end;
-
-        if (delta.action === "insertText") {
-            if (start.row === row && start.column <= column) {
-                if (start.column === column && this.$insertRight) {
-                } else if (start.row === end.row) {
-                    column += end.column - start.column;
-                } else {
-                    column -= start.column;
-                    row += end.row - start.row;
-                }
-            } else if (start.row !== end.row && start.row < row) {
-                row += end.row - start.row;
-            }
-        } else if (delta.action === "insertLines") {
-            if (start.row === row && column === 0 && this.$insertRight) {
-            }
-            else if (start.row <= row) {
-                row += end.row - start.row;
-            }
-        } else if (delta.action === "removeText") {
-            if (start.row === row && start.column < column) {
-                if (end.column >= column)
-                    column = start.column;
-                else
-                    column = Math.max(0, column - (end.column - start.column));
-
-            } else if (start.row !== end.row && start.row < row) {
-                if (end.row === row)
-                    column = Math.max(0, column - end.column) + start.column;
-                row -= (end.row - start.row);
-            } else if (end.row === row) {
-                row -= end.row - start.row;
-                column = Math.max(0, column - end.column) + start.column;
-            }
-        } else if (delta.action == "removeLines") {
-            if (start.row <= row) {
-                if (end.row <= row)
-                    row -= end.row - start.row;
-                else {
-                    row = start.row;
-                    column = 0;
-                }
-            }
-        }
-
-        this.setPosition(row, column, true);
+            
+        var point = $getTransformedPoint(delta, {row: this.row, column: this.column}, this.$insertRight);
+        this.setPosition(point.row, point.column, true);
     };
+    
+    function $pointsInOrder(point1, point2, equalPointsInOrder) {
+        var bColIsAfter = equalPointsInOrder ? point1.column <= point2.column : point1.column < point2.column;
+        return (point1.row < point2.row) || (point1.row == point2.row && bColIsAfter);
+    }
+            
+    function $getTransformedPoint(delta, point, moveIfEqual) {
+        var deltaIsInsert = delta.action == "insert";
+        var deltaRowShift = (deltaIsInsert ? 1 : -1) * (delta.end.row    - delta.start.row);
+        var deltaColShift = (deltaIsInsert ? 1 : -1) * (delta.end.column - delta.start.column);
+        var deltaStart = delta.start;
+        var deltaEnd = deltaIsInsert ? deltaStart : delta.end; // Collapse insert range.
+        if ($pointsInOrder(point, deltaStart, moveIfEqual)) {
+            return {
+                row: point.row,
+                column: point.column
+            };
+        }
+        if ($pointsInOrder(deltaEnd, point, !moveIfEqual)) {
+            return {
+                row: point.row + deltaRowShift,
+                column: point.column + (point.row == deltaEnd.row ? deltaColShift : 0)
+            };
+        }
+        
+        return {
+            row: deltaStart.row,
+            column: deltaStart.column
+        };
+    }
     this.setPosition = function(row, column, noClip) {
         var pos;
         if (noClip) {
@@ -734,22 +799,23 @@ var Anchor = exports.Anchor = function(doc, row, column) {
 
 });
 
-define("ace/document",["require","exports","module","ace/lib/oop","ace/lib/event_emitter","ace/range","ace/anchor"], function(require, exports, module) {
+define("ace/document",["require","exports","module","ace/lib/oop","ace/apply_delta","ace/lib/event_emitter","ace/range","ace/anchor"], function(require, exports, module) {
 "use strict";
 
 var oop = require("./lib/oop");
+var applyDelta = require("./apply_delta").applyDelta;
 var EventEmitter = require("./lib/event_emitter").EventEmitter;
 var Range = require("./range").Range;
 var Anchor = require("./anchor").Anchor;
 
-var Document = function(text) {
-    this.$lines = [];
-    if (text.length === 0) {
+var Document = function(textOrLines) {
+    this.$lines = [""];
+    if (textOrLines.length === 0) {
         this.$lines = [""];
-    } else if (Array.isArray(text)) {
-        this._insertLines(0, text);
+    } else if (Array.isArray(textOrLines)) {
+        this.insertMergedLines({row: 0, column: 0}, textOrLines);
     } else {
-        this.insert({row: 0, column:0}, text);
+        this.insert({row: 0, column:0}, textOrLines);
     }
 };
 
@@ -757,9 +823,9 @@ var Document = function(text) {
 
     oop.implement(this, EventEmitter);
     this.setValue = function(text) {
-        var len = this.getLength();
-        this.remove(new Range(0, 0, len, this.getLine(len-1).length));
-        this.insert({row: 0, column:0}, text);
+        var len = this.getLength() - 1;
+        this.remove(new Range(0, 0, len, this.getLine(len).length));
+        this.insert({row: 0, column: 0}, text);
     };
     this.getValue = function() {
         return this.getAllLines().join(this.getNewLineCharacter());
@@ -767,14 +833,15 @@ var Document = function(text) {
     this.createAnchor = function(row, column) {
         return new Anchor(this, row, column);
     };
-    if ("aaa".split(/a/).length === 0)
+    if ("aaa".split(/a/).length === 0) {
         this.$split = function(text) {
             return text.replace(/\r\n|\r/g, "\n").split("\n");
         };
-    else
+    } else {
         this.$split = function(text) {
             return text.split(/\r\n|\r|\n/);
         };
+    }
 
 
     this.$detectNewLine = function(text) {
@@ -821,251 +888,246 @@ var Document = function(text) {
         return this.$lines.length;
     };
     this.getTextRange = function(range) {
-        if (range.start.row == range.end.row) {
-            return this.getLine(range.start.row)
-                .substring(range.start.column, range.end.column);
-        }
-        var lines = this.getLines(range.start.row, range.end.row);
-        lines[0] = (lines[0] || "").substring(range.start.column);
-        var l = lines.length - 1;
-        if (range.end.row - range.start.row == l)
-            lines[l] = lines[l].substring(0, range.end.column);
-        return lines.join(this.getNewLineCharacter());
+        return this.getLinesForRange(range).join(this.getNewLineCharacter());
     };
-
+    this.getLinesForRange = function(range) {
+        var lines;
+        if (range.start.row === range.end.row) {
+            lines = [this.getLine(range.start.row).substring(range.start.column, range.end.column)];
+        } else {
+            lines = this.getLines(range.start.row, range.end.row);
+            lines[0] = (lines[0] || "").substring(range.start.column);
+            var l = lines.length - 1;
+            if (range.end.row - range.start.row == l)
+                lines[l] = lines[l].substring(0, range.end.column);
+        }
+        return lines;
+    };
+    this.insertLines = function(row, lines) {
+        console.warn("Use of document.insertLines is deprecated. Use the insertFullLines method instead.");
+        return this.insertFullLines(row, lines);
+    };
+    this.removeLines = function(firstRow, lastRow) {
+        console.warn("Use of document.removeLines is deprecated. Use the removeFullLines method instead.");
+        return this.removeFullLines(firstRow, lastRow);
+    };
+    this.insertNewLine = function(position) {
+        console.warn("Use of document.insertNewLine is deprecated. Use insertMergedLines(position, [\'\', \'\']) instead.");
+        return this.insertMergedLines(position, ["", ""]);
+    };
+    this.insert = function(position, text) {
+        if (this.getLength() <= 1)
+            this.$detectNewLine(text);
+        
+        return this.insertMergedLines(position, this.$split(text));
+    };
+    this.insertInLine = function(position, text) {
+        var start = this.clippedPos(position.row, position.column);
+        var end = this.pos(position.row, position.column + text.length);
+        
+        this.applyDelta({
+            start: start,
+            end: end,
+            action: "insert",
+            lines: [text]
+        }, true);
+        
+        return this.clonePos(end);
+    };
+    
+    this.clippedPos = function(row, column) {
+        var length = this.getLength();
+        if (row === undefined) {
+            row = length;
+        } else if (row < 0) {
+            row = 0;
+        } else if (row >= length) {
+            row = length - 1;
+            column = undefined;
+        }
+        var line = this.getLine(row);
+        if (column == undefined)
+            column = line.length;
+        column = Math.min(Math.max(column, 0), line.length);
+        return {row: row, column: column};
+    };
+    
+    this.clonePos = function(pos) {
+        return {row: pos.row, column: pos.column};
+    };
+    
+    this.pos = function(row, column) {
+        return {row: row, column: column};
+    };
+    
     this.$clipPosition = function(position) {
         var length = this.getLength();
         if (position.row >= length) {
             position.row = Math.max(0, length - 1);
-            position.column = this.getLine(length-1).length;
-        } else if (position.row < 0)
-            position.row = 0;
-        return position;
-    };
-    this.insert = function(position, text) {
-        if (!text || text.length === 0)
-            return position;
-
-        position = this.$clipPosition(position);
-        if (this.getLength() <= 1)
-            this.$detectNewLine(text);
-
-        var lines = this.$split(text);
-        var firstLine = lines.splice(0, 1)[0];
-        var lastLine = lines.length == 0 ? null : lines.splice(lines.length - 1, 1)[0];
-
-        position = this.insertInLine(position, firstLine);
-        if (lastLine !== null) {
-            position = this.insertNewLine(position); // terminate first line
-            position = this._insertLines(position.row, lines);
-            position = this.insertInLine(position, lastLine || "");
+            position.column = this.getLine(length - 1).length;
+        } else {
+            position.row = Math.max(0, position.row);
+            position.column = Math.min(Math.max(position.column, 0), this.getLine(position.row).length);
         }
         return position;
     };
-    this.insertLines = function(row, lines) {
-        if (row >= this.getLength())
-            return this.insert({row: row, column: 0}, "\n" + lines.join("\n"));
-        return this._insertLines(Math.max(row, 0), lines);
-    };
-    this._insertLines = function(row, lines) {
-        if (lines.length == 0)
-            return {row: row, column: 0};
-        while (lines.length > 20000) {
-            var end = this._insertLines(row, lines.slice(0, 20000));
-            lines = lines.slice(20000);
-            row = end.row;
+    this.insertFullLines = function(row, lines) {
+        row = Math.min(Math.max(row, 0), this.getLength());
+        var column = 0;
+        if (row < this.getLength()) {
+            lines = lines.concat([""]);
+            column = 0;
+        } else {
+            lines = [""].concat(lines);
+            row--;
+            column = this.$lines[row].length;
         }
-
-        var args = [row, 0];
-        args.push.apply(args, lines);
-        this.$lines.splice.apply(this.$lines, args);
-
-        var range = new Range(row, 0, row + lines.length, 0);
-        var delta = {
-            action: "insertLines",
-            range: range,
+        this.insertMergedLines({row: row, column: column}, lines);
+    };    
+    this.insertMergedLines = function(position, lines) {
+        var start = this.clippedPos(position.row, position.column);
+        var end = {
+            row: start.row + lines.length - 1,
+            column: (lines.length == 1 ? start.column : 0) + lines[lines.length - 1].length
+        };
+        
+        this.applyDelta({
+            start: start,
+            end: end,
+            action: "insert",
             lines: lines
-        };
-        this._signal("change", { data: delta });
-        return range.end;
-    };
-    this.insertNewLine = function(position) {
-        position = this.$clipPosition(position);
-        var line = this.$lines[position.row] || "";
-
-        this.$lines[position.row] = line.substring(0, position.column);
-        this.$lines.splice(position.row + 1, 0, line.substring(position.column, line.length));
-
-        var end = {
-            row : position.row + 1,
-            column : 0
-        };
-
-        var delta = {
-            action: "insertText",
-            range: Range.fromPoints(position, end),
-            text: this.getNewLineCharacter()
-        };
-        this._signal("change", { data: delta });
-
-        return end;
-    };
-    this.insertInLine = function(position, text) {
-        if (text.length == 0)
-            return position;
-
-        var line = this.$lines[position.row] || "";
-
-        this.$lines[position.row] = line.substring(0, position.column) + text
-                + line.substring(position.column);
-
-        var end = {
-            row : position.row,
-            column : position.column + text.length
-        };
-
-        var delta = {
-            action: "insertText",
-            range: Range.fromPoints(position, end),
-            text: text
-        };
-        this._signal("change", { data: delta });
-
-        return end;
+        });
+        
+        return this.clonePos(end);
     };
     this.remove = function(range) {
-        if (!(range instanceof Range))
-            range = Range.fromPoints(range.start, range.end);
-        range.start = this.$clipPosition(range.start);
-        range.end = this.$clipPosition(range.end);
-
-        if (range.isEmpty())
-            return range.start;
-
-        var firstRow = range.start.row;
-        var lastRow = range.end.row;
-
-        if (range.isMultiLine()) {
-            var firstFullRow = range.start.column == 0 ? firstRow : firstRow + 1;
-            var lastFullRow = lastRow - 1;
-
-            if (range.end.column > 0)
-                this.removeInLine(lastRow, 0, range.end.column);
-
-            if (lastFullRow >= firstFullRow)
-                this._removeLines(firstFullRow, lastFullRow);
-
-            if (firstFullRow != firstRow) {
-                this.removeInLine(firstRow, range.start.column, this.getLine(firstRow).length);
-                this.removeNewLine(range.start.row);
-            }
-        }
-        else {
-            this.removeInLine(firstRow, range.start.column, range.end.column);
-        }
-        return range.start;
+        var start = this.clippedPos(range.start.row, range.start.column);
+        var end = this.clippedPos(range.end.row, range.end.column);
+        this.applyDelta({
+            start: start,
+            end: end,
+            action: "remove",
+            lines: this.getLinesForRange({start: start, end: end})
+        });
+        return this.clonePos(start);
     };
     this.removeInLine = function(row, startColumn, endColumn) {
-        if (startColumn == endColumn)
-            return;
-
-        var range = new Range(row, startColumn, row, endColumn);
-        var line = this.getLine(row);
-        var removed = line.substring(startColumn, endColumn);
-        var newLine = line.substring(0, startColumn) + line.substring(endColumn, line.length);
-        this.$lines.splice(row, 1, newLine);
-
-        var delta = {
-            action: "removeText",
-            range: range,
-            text: removed
-        };
-        this._signal("change", { data: delta });
-        return range.start;
+        var start = this.clippedPos(row, startColumn);
+        var end = this.clippedPos(row, endColumn);
+        
+        this.applyDelta({
+            start: start,
+            end: end,
+            action: "remove",
+            lines: this.getLinesForRange({start: start, end: end})
+        }, true);
+        
+        return this.clonePos(start);
     };
-    this.removeLines = function(firstRow, lastRow) {
-        if (firstRow < 0 || lastRow >= this.getLength())
-            return this.remove(new Range(firstRow, 0, lastRow + 1, 0));
-        return this._removeLines(firstRow, lastRow);
-    };
-
-    this._removeLines = function(firstRow, lastRow) {
-        var range = new Range(firstRow, 0, lastRow + 1, 0);
-        var removed = this.$lines.splice(firstRow, lastRow - firstRow + 1);
-
-        var delta = {
-            action: "removeLines",
-            range: range,
-            nl: this.getNewLineCharacter(),
-            lines: removed
-        };
-        this._signal("change", { data: delta });
-        return removed;
+    this.removeFullLines = function(firstRow, lastRow) {
+        firstRow = Math.min(Math.max(0, firstRow), this.getLength() - 1);
+        lastRow  = Math.min(Math.max(0, lastRow ), this.getLength() - 1);
+        var deleteFirstNewLine = lastRow == this.getLength() - 1 && firstRow > 0;
+        var deleteLastNewLine  = lastRow  < this.getLength() - 1;
+        var startRow = ( deleteFirstNewLine ? firstRow - 1                  : firstRow                    );
+        var startCol = ( deleteFirstNewLine ? this.getLine(startRow).length : 0                           );
+        var endRow   = ( deleteLastNewLine  ? lastRow + 1                   : lastRow                     );
+        var endCol   = ( deleteLastNewLine  ? 0                             : this.getLine(endRow).length ); 
+        var range = new Range(startRow, startCol, endRow, endCol);
+        var deletedLines = this.$lines.slice(firstRow, lastRow + 1);
+        
+        this.applyDelta({
+            start: range.start,
+            end: range.end,
+            action: "remove",
+            lines: this.getLinesForRange(range)
+        });
+        return deletedLines;
     };
     this.removeNewLine = function(row) {
-        var firstLine = this.getLine(row);
-        var secondLine = this.getLine(row+1);
-
-        var range = new Range(row, firstLine.length, row+1, 0);
-        var line = firstLine + secondLine;
-
-        this.$lines.splice(row, 2, line);
-
-        var delta = {
-            action: "removeText",
-            range: range,
-            text: this.getNewLineCharacter()
-        };
-        this._signal("change", { data: delta });
+        if (row < this.getLength() - 1 && row >= 0) {
+            this.applyDelta({
+                start: this.pos(row, this.getLine(row).length),
+                end: this.pos(row + 1, 0),
+                action: "remove",
+                lines: ["", ""]
+            });
+        }
     };
     this.replace = function(range, text) {
-        if (!(range instanceof Range))
+        if (!range instanceof Range)
             range = Range.fromPoints(range.start, range.end);
-        if (text.length == 0 && range.isEmpty())
+        if (text.length === 0 && range.isEmpty())
             return range.start;
         if (text == this.getTextRange(range))
             return range.end;
 
         this.remove(range);
+        var end;
         if (text) {
-            var end = this.insert(range.start, text);
+            end = this.insert(range.start, text);
         }
         else {
             end = range.start;
         }
-
+        
         return end;
     };
     this.applyDeltas = function(deltas) {
         for (var i=0; i<deltas.length; i++) {
-            var delta = deltas[i];
-            var range = Range.fromPoints(delta.range.start, delta.range.end);
-
-            if (delta.action == "insertLines")
-                this.insertLines(range.start.row, delta.lines);
-            else if (delta.action == "insertText")
-                this.insert(range.start, delta.text);
-            else if (delta.action == "removeLines")
-                this._removeLines(range.start.row, range.end.row - 1);
-            else if (delta.action == "removeText")
-                this.remove(range);
+            this.applyDelta(deltas[i]);
         }
     };
     this.revertDeltas = function(deltas) {
         for (var i=deltas.length-1; i>=0; i--) {
-            var delta = deltas[i];
-
-            var range = Range.fromPoints(delta.range.start, delta.range.end);
-
-            if (delta.action == "insertLines")
-                this._removeLines(range.start.row, range.end.row - 1);
-            else if (delta.action == "insertText")
-                this.remove(range);
-            else if (delta.action == "removeLines")
-                this._insertLines(range.start.row, delta.lines);
-            else if (delta.action == "removeText")
-                this.insert(range.start, delta.text);
+            this.revertDelta(deltas[i]);
         }
+    };
+    this.applyDelta = function(delta, doNotValidate) {
+        var isInsert = delta.action == "insert";
+        if (isInsert ? delta.lines.length <= 1 && !delta.lines[0]
+            : !Range.comparePoints(delta.start, delta.end)) {
+            return;
+        }
+        
+        if (isInsert && delta.lines.length > 20000)
+            this.$splitAndapplyLargeDelta(delta, 20000);
+        applyDelta(this.$lines, delta, doNotValidate);
+        this._signal("change", delta);
+    };
+    
+    this.$splitAndapplyLargeDelta = function(delta, MAX) {
+        var lines = delta.lines;
+        var l = lines.length;
+        var row = delta.start.row; 
+        var column = delta.start.column;
+        var from = 0, to = 0;
+        do {
+            from = to;
+            to += MAX - 1;
+            var chunk = lines.slice(from, to);
+            if (to > l) {
+                delta.lines = chunk;
+                delta.start.row = row + from;
+                delta.start.column = column;
+                break;
+            }
+            chunk.push("");
+            this.applyDelta({
+                start: this.pos(row + from, column),
+                end: this.pos(row + to, column = 0),
+                action: delta.action,
+                lines: chunk
+            }, true);
+        } while(true);
+    };
+    this.revertDelta = function(delta) {
+        this.applyDelta({
+            start: this.clonePos(delta.start),
+            end: this.clonePos(delta.end),
+            action: (delta.action == "insert" ? "remove" : "insert"),
+            lines: delta.lines.slice()
+        });
     };
     this.indexToPosition = function(index, startRow) {
         var lines = this.$lines || this.getAllLines();
@@ -1283,9 +1345,10 @@ exports.delayedCall = function(fcn, defaultTimeout) {
 };
 });
 
-define("ace/worker/mirror",["require","exports","module","ace/document","ace/lib/lang"], function(require, exports, module) {
+define("ace/worker/mirror",["require","exports","module","ace/range","ace/document","ace/lib/lang"], function(require, exports, module) {
 "use strict";
 
+var Range = require("../range").Range;
 var Document = require("../document").Document;
 var lang = require("../lib/lang");
     
@@ -1297,7 +1360,19 @@ var Mirror = exports.Mirror = function(sender) {
     
     var _self = this;
     sender.on("change", function(e) {
-        doc.applyDeltas(e.data);
+        var data = e.data;
+        if (data[0].start) {
+            doc.applyDeltas(data);
+        } else {
+            for (var i = 0; i < data.length; i += 2) {
+                if (Array.isArray(data[i+1])) {
+                    var d = {action: "insert", start: data[i], lines: data[i+1]};
+                } else {
+                    var d = {action: "remove", start: data[i], end: data[i+1]};
+                }
+                doc.applyDelta(d, true);
+            }
+        }
         if (_self.$timeout)
             return deferredUpdate.schedule(_self.$timeout);
         _self.onUpdate();
@@ -9821,8 +9896,1219 @@ cqlLexer.grammarFileName = "cql.g4";
 exports.cqlLexer = cqlLexer;
 });
 
-define("ace/mode/cql/cqlListener",["require","exports","module","ace/mode/cql/antlr4/index"], function(require, exports, module) {
+define("ace/mode/cql/parse_context",["require","exports","module"], function(require, exports, module) {
+  "use strict";
+
+  var Resolver = function(context,path){
+    this.path = path;
+    this.parts = (this.path instanceof Array)?   this.path : this.path.split(".")
+    this.context= context;
+    this.observers = [];
+  }
+
+  Resolver.prototype.resolve = function() {
+    var prop = null;
+    if(this.parts){
+      var p = this.context.resolve(this.parts[0])
+      if (p && this.parts.length == 1){prop = p}
+      if(p && this.parts.length > 1){prop = p.resolve(this.parts.slice(1))}
+    }
+   return prop;
+   };
+
+
+  var Context = function(start,stop,parent){
+    this.start = start;
+    this.stop;
+    this.parent = parent;
+    this.variables = {};
+    this.children = [];
+    this.type = null;
+    this.observers = {}
+
+  }
+
+  Context.prototype.createChildContext = function(start,end) {
+      var ctx = new Context(start,end,this);
+      this.children.push(ctx);
+      return ctx;
+  };
+  
+  Context.prototype.getVaribleHierarchy = function(priority) {
+    priority = priority || 10 
+    if(priority < 1){
+      priority = 1
+    }
+    var hier = this.parent ? this.parent.getVaribleHierarchy(priority - 1) : []
+    for(var x in this.variables){
+      hier.push({id: x, type: this.variables[x]})
+    }
+    return hier;
+  };
+  Context.prototype.set = function(id,type) {
+    this.variables[id] = type;
+  };
+
+  Context.prototype.resolve = function(id) {
+    var prop = this.variables[id];
+    if(!prop && this.parent){prop= this.parent.resolve(id)}
+    return  prop;  
+  }
+  
+   exports.Resolver = Resolver;
+   exports.Context = Context;
+});
+
+define("ace/lib/dom",["require","exports","module"], function(require, exports, module) {
+"use strict";
+
+var XHTML_NS = "http://www.w3.org/1999/xhtml";
+
+exports.getDocumentHead = function(doc) {
+    if (!doc)
+        doc = document;
+    return doc.head || doc.getElementsByTagName("head")[0] || doc.documentElement;
+};
+
+exports.createElement = function(tag, ns) {
+    return document.createElementNS ?
+           document.createElementNS(ns || XHTML_NS, tag) :
+           document.createElement(tag);
+};
+
+exports.hasCssClass = function(el, name) {
+    var classes = (el.className || "").split(/\s+/g);
+    return classes.indexOf(name) !== -1;
+};
+exports.addCssClass = function(el, name) {
+    if (!exports.hasCssClass(el, name)) {
+        el.className += " " + name;
+    }
+};
+exports.removeCssClass = function(el, name) {
+    var classes = el.className.split(/\s+/g);
+    while (true) {
+        var index = classes.indexOf(name);
+        if (index == -1) {
+            break;
+        }
+        classes.splice(index, 1);
+    }
+    el.className = classes.join(" ");
+};
+
+exports.toggleCssClass = function(el, name) {
+    var classes = el.className.split(/\s+/g), add = true;
+    while (true) {
+        var index = classes.indexOf(name);
+        if (index == -1) {
+            break;
+        }
+        add = false;
+        classes.splice(index, 1);
+    }
+    if (add)
+        classes.push(name);
+
+    el.className = classes.join(" ");
+    return add;
+};
+exports.setCssClass = function(node, className, include) {
+    if (include) {
+        exports.addCssClass(node, className);
+    } else {
+        exports.removeCssClass(node, className);
+    }
+};
+
+exports.hasCssString = function(id, doc) {
+    var index = 0, sheets;
+    doc = doc || document;
+
+    if (doc.createStyleSheet && (sheets = doc.styleSheets)) {
+        while (index < sheets.length)
+            if (sheets[index++].owningElement.id === id) return true;
+    } else if ((sheets = doc.getElementsByTagName("style"))) {
+        while (index < sheets.length)
+            if (sheets[index++].id === id) return true;
+    }
+
+    return false;
+};
+
+exports.importCssString = function importCssString(cssText, id, doc) {
+    doc = doc || document;
+    if (id && exports.hasCssString(id, doc))
+        return null;
+    
+    var style;
+    
+    if (id)
+        cssText += "\n/*# sourceURL=ace/css/" + id + " */";
+    
+    if (doc.createStyleSheet) {
+        style = doc.createStyleSheet();
+        style.cssText = cssText;
+        if (id)
+            style.owningElement.id = id;
+    } else {
+        style = exports.createElement("style");
+        style.appendChild(doc.createTextNode(cssText));
+        if (id)
+            style.id = id;
+
+        exports.getDocumentHead(doc).appendChild(style);
+    }
+};
+
+exports.importCssStylsheet = function(uri, doc) {
+    if (doc.createStyleSheet) {
+        doc.createStyleSheet(uri);
+    } else {
+        var link = exports.createElement('link');
+        link.rel = 'stylesheet';
+        link.href = uri;
+
+        exports.getDocumentHead(doc).appendChild(link);
+    }
+};
+
+exports.getInnerWidth = function(element) {
+    return (
+        parseInt(exports.computedStyle(element, "paddingLeft"), 10) +
+        parseInt(exports.computedStyle(element, "paddingRight"), 10) + 
+        element.clientWidth
+    );
+};
+
+exports.getInnerHeight = function(element) {
+    return (
+        parseInt(exports.computedStyle(element, "paddingTop"), 10) +
+        parseInt(exports.computedStyle(element, "paddingBottom"), 10) +
+        element.clientHeight
+    );
+};
+
+exports.scrollbarWidth = function(document) {
+    var inner = exports.createElement("ace_inner");
+    inner.style.width = "100%";
+    inner.style.minWidth = "0px";
+    inner.style.height = "200px";
+    inner.style.display = "block";
+
+    var outer = exports.createElement("ace_outer");
+    var style = outer.style;
+
+    style.position = "absolute";
+    style.left = "-10000px";
+    style.overflow = "hidden";
+    style.width = "200px";
+    style.minWidth = "0px";
+    style.height = "150px";
+    style.display = "block";
+
+    outer.appendChild(inner);
+
+    var body = document.documentElement;
+    body.appendChild(outer);
+
+    var noScrollbar = inner.offsetWidth;
+
+    style.overflow = "scroll";
+    var withScrollbar = inner.offsetWidth;
+
+    if (noScrollbar == withScrollbar) {
+        withScrollbar = outer.clientWidth;
+    }
+
+    body.removeChild(outer);
+
+    return noScrollbar-withScrollbar;
+};
+
+if (typeof document == "undefined") {
+    exports.importCssString = function() {};
+    return;
+}
+
+if (window.pageYOffset !== undefined) {
+    exports.getPageScrollTop = function() {
+        return window.pageYOffset;
+    };
+
+    exports.getPageScrollLeft = function() {
+        return window.pageXOffset;
+    };
+}
+else {
+    exports.getPageScrollTop = function() {
+        return document.body.scrollTop;
+    };
+
+    exports.getPageScrollLeft = function() {
+        return document.body.scrollLeft;
+    };
+}
+
+if (window.getComputedStyle)
+    exports.computedStyle = function(element, style) {
+        if (style)
+            return (window.getComputedStyle(element, "") || {})[style] || "";
+        return window.getComputedStyle(element, "") || {};
+    };
+else
+    exports.computedStyle = function(element, style) {
+        if (style)
+            return element.currentStyle[style];
+        return element.currentStyle;
+    };
+exports.setInnerHtml = function(el, innerHtml) {
+    var element = el.cloneNode(false);//document.createElement("div");
+    element.innerHTML = innerHtml;
+    el.parentNode.replaceChild(element, el);
+    return element;
+};
+
+if ("textContent" in document.documentElement) {
+    exports.setInnerText = function(el, innerText) {
+        el.textContent = innerText;
+    };
+
+    exports.getInnerText = function(el) {
+        return el.textContent;
+    };
+}
+else {
+    exports.setInnerText = function(el, innerText) {
+        el.innerText = innerText;
+    };
+
+    exports.getInnerText = function(el) {
+        return el.innerText;
+    };
+}
+
+exports.getParentWindow = function(document) {
+    return document.defaultView || document.parentWindow;
+};
+
+});
+
+define("ace/lib/net",["require","exports","module","ace/lib/dom"], function(require, exports, module) {
+"use strict";
+var dom = require("./dom");
+
+exports.get = function (url, callback) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.onreadystatechange = function () {
+        if (xhr.readyState === 4) {
+            callback(xhr.responseText);
+        }
+    };
+    xhr.send(null);
+};
+
+exports.loadScript = function(path, callback) {
+    var head = dom.getDocumentHead();
+    var s = document.createElement('script');
+
+    s.src = path;
+    head.appendChild(s);
+
+    s.onload = s.onreadystatechange = function(_, isAbort) {
+        if (isAbort || !s.readyState || s.readyState == "loaded" || s.readyState == "complete") {
+            s = s.onload = s.onreadystatechange = null;
+            if (!isAbort)
+                callback();
+        }
+    };
+};
+exports.qualifyURL = function(url) {
+    var a = document.createElement('a');
+    a.href = url;
+    return a.href;
+}
+
+});
+
+define("ace/lib/app_config",["require","exports","module","ace/lib/oop","ace/lib/event_emitter"], function(require, exports, module) {
+"no use strict";
+
+var oop = require("./oop");
+var EventEmitter = require("./event_emitter").EventEmitter;
+
+var optionsProvider = {
+    setOptions: function(optList) {
+        Object.keys(optList).forEach(function(key) {
+            this.setOption(key, optList[key]);
+        }, this);
+    },
+    getOptions: function(optionNames) {
+        var result = {};
+        if (!optionNames) {
+            optionNames = Object.keys(this.$options);
+        } else if (!Array.isArray(optionNames)) {
+            result = optionNames;
+            optionNames = Object.keys(result);
+        }
+        optionNames.forEach(function(key) {
+            result[key] = this.getOption(key);
+        }, this);
+        return result;
+    },
+    setOption: function(name, value) {
+        if (this["$" + name] === value)
+            return;
+        var opt = this.$options[name];
+        if (!opt) {
+            return warn('misspelled option "' + name + '"');
+        }
+        if (opt.forwardTo)
+            return this[opt.forwardTo] && this[opt.forwardTo].setOption(name, value);
+
+        if (!opt.handlesSet)
+            this["$" + name] = value;
+        if (opt && opt.set)
+            opt.set.call(this, value);
+    },
+    getOption: function(name) {
+        var opt = this.$options[name];
+        if (!opt) {
+            return warn('misspelled option "' + name + '"');
+        }
+        if (opt.forwardTo)
+            return this[opt.forwardTo] && this[opt.forwardTo].getOption(name);
+        return opt && opt.get ? opt.get.call(this) : this["$" + name];
+    }
+};
+
+function warn(message) {
+    if (typeof console != "undefined" && console.warn)
+        console.warn.apply(console, arguments);
+}
+
+function reportError(msg, data) {
+    var e = new Error(msg);
+    e.data = data;
+    if (typeof console == "object" && console.error)
+        console.error(e);
+    setTimeout(function() { throw e; });
+}
+
+var AppConfig = function() {
+    this.$defaultOptions = {};
+};
+
+(function() {
+    oop.implement(this, EventEmitter);
+    this.defineOptions = function(obj, path, options) {
+        if (!obj.$options)
+            this.$defaultOptions[path] = obj.$options = {};
+
+        Object.keys(options).forEach(function(key) {
+            var opt = options[key];
+            if (typeof opt == "string")
+                opt = {forwardTo: opt};
+
+            opt.name || (opt.name = key);
+            obj.$options[opt.name] = opt;
+            if ("initialValue" in opt)
+                obj["$" + opt.name] = opt.initialValue;
+        });
+        oop.implement(obj, optionsProvider);
+
+        return this;
+    };
+
+    this.resetOptions = function(obj) {
+        Object.keys(obj.$options).forEach(function(key) {
+            var opt = obj.$options[key];
+            if ("value" in opt)
+                obj.setOption(key, opt.value);
+        });
+    };
+
+    this.setDefaultValue = function(path, name, value) {
+        var opts = this.$defaultOptions[path] || (this.$defaultOptions[path] = {});
+        if (opts[name]) {
+            if (opts.forwardTo)
+                this.setDefaultValue(opts.forwardTo, name, value);
+            else
+                opts[name].value = value;
+        }
+    };
+
+    this.setDefaultValues = function(path, optionHash) {
+        Object.keys(optionHash).forEach(function(key) {
+            this.setDefaultValue(path, key, optionHash[key]);
+        }, this);
+    };
+    
+    this.warn = warn;
+    this.reportError = reportError;
+    
+}).call(AppConfig.prototype);
+
+exports.AppConfig = AppConfig;
+
+});
+
+define("ace/config",["require","exports","module","ace/lib/lang","ace/lib/oop","ace/lib/net","ace/lib/app_config"], function(require, exports, module) {
+"no use strict";
+
+var lang = require("./lib/lang");
+var oop = require("./lib/oop");
+var net = require("./lib/net");
+var AppConfig = require("./lib/app_config").AppConfig;
+
+module.exports = exports = new AppConfig();
+
+var global = (function() {
+    return this || typeof window != "undefined" && window;
+})();
+
+var options = {
+    packaged: false,
+    workerPath: null,
+    modePath: null,
+    themePath: null,
+    basePath: "",
+    suffix: ".js",
+    $moduleUrls: {}
+};
+
+exports.get = function(key) {
+    if (!options.hasOwnProperty(key))
+        throw new Error("Unknown config key: " + key);
+
+    return options[key];
+};
+
+exports.set = function(key, value) {
+    if (!options.hasOwnProperty(key))
+        throw new Error("Unknown config key: " + key);
+
+    options[key] = value;
+};
+
+exports.all = function() {
+    return lang.copyObject(options);
+};
+exports.moduleUrl = function(name, component) {
+    if (options.$moduleUrls[name])
+        return options.$moduleUrls[name];
+
+    var parts = name.split("/");
+    component = component || parts[parts.length - 2] || "";
+    var sep = component == "snippets" ? "/" : "-";
+    var base = parts[parts.length - 1];
+    if (component == "worker" && sep == "-") {
+        var re = new RegExp("^" + component + "[\\-_]|[\\-_]" + component + "$", "g");
+        base = base.replace(re, "");
+    }
+
+    if ((!base || base == component) && parts.length > 1)
+        base = parts[parts.length - 2];
+    var path = options[component + "Path"];
+    if (path == null) {
+        path = options.basePath;
+    } else if (sep == "/") {
+        component = sep = "";
+    }
+    if (path && path.slice(-1) != "/")
+        path += "/";
+    return path + component + sep + base + this.get("suffix");
+};
+
+exports.setModuleUrl = function(name, subst) {
+    return options.$moduleUrls[name] = subst;
+};
+
+exports.$loading = {};
+exports.loadModule = function(moduleName, onLoad) {
+    var module, moduleType;
+    if (Array.isArray(moduleName)) {
+        moduleType = moduleName[0];
+        moduleName = moduleName[1];
+    }
+
+    try {
+        module = require(moduleName);
+    } catch (e) {}
+    if (module && !exports.$loading[moduleName])
+        return onLoad && onLoad(module);
+
+    if (!exports.$loading[moduleName])
+        exports.$loading[moduleName] = [];
+
+    exports.$loading[moduleName].push(onLoad);
+
+    if (exports.$loading[moduleName].length > 1)
+        return;
+
+    var afterLoad = function() {
+        require([moduleName], function(module) {
+            exports._emit("load.module", {name: moduleName, module: module});
+            var listeners = exports.$loading[moduleName];
+            exports.$loading[moduleName] = null;
+            listeners.forEach(function(onLoad) {
+                onLoad && onLoad(module);
+            });
+        });
+    };
+
+    if (!exports.get("packaged"))
+        return afterLoad();
+    net.loadScript(exports.moduleUrl(moduleName, moduleType), afterLoad);
+};
+function init(packaged) {
+    options.packaged = packaged || require.packaged || module.packaged || (global.define && define.packaged);
+
+    if (!global.document)
+        return "";
+
+    var scriptOptions = {};
+    var scriptUrl = "";
+    var currentScript = (document.currentScript || document._currentScript ); // native or polyfill
+    var currentDocument = currentScript && currentScript.ownerDocument || document;
+    
+    var scripts = currentDocument.getElementsByTagName("script");
+    for (var i=0; i<scripts.length; i++) {
+        var script = scripts[i];
+
+        var src = script.src || script.getAttribute("src");
+        if (!src)
+            continue;
+
+        var attributes = script.attributes;
+        for (var j=0, l=attributes.length; j < l; j++) {
+            var attr = attributes[j];
+            if (attr.name.indexOf("data-ace-") === 0) {
+                scriptOptions[deHyphenate(attr.name.replace(/^data-ace-/, ""))] = attr.value;
+            }
+        }
+
+        var m = src.match(/^(.*)\/ace(\-\w+)?\.js(\?|$)/);
+        if (m)
+            scriptUrl = m[1];
+    }
+
+    if (scriptUrl) {
+        scriptOptions.base = scriptOptions.base || scriptUrl;
+        scriptOptions.packaged = true;
+    }
+
+    scriptOptions.basePath = scriptOptions.base;
+    scriptOptions.workerPath = scriptOptions.workerPath || scriptOptions.base;
+    scriptOptions.modePath = scriptOptions.modePath || scriptOptions.base;
+    scriptOptions.themePath = scriptOptions.themePath || scriptOptions.base;
+    delete scriptOptions.base;
+
+    for (var key in scriptOptions)
+        if (typeof scriptOptions[key] !== "undefined")
+            exports.set(key, scriptOptions[key]);
+};
+
+exports.init = init;
+
+function deHyphenate(str) {
+    return str.replace(/-(.)/g, function(m, m1) { return m1.toUpperCase(); });
+}
+
+});
+
+define("ace/mode/cql/model",["require","exports","module","ace/config"], function(require, exports, module) {
+  "use strict";
+  var config = require("../../config");
+  
+
+
+  var resolvePath = function(path) {
+    var parts = path || [];
+    if(path instanceof String){
+      parts = path.split(".")
+    }
+    var prop = null;
+    if(parts && parts.length > 0){
+      prop = this.resolve(parts[0])
+      prop = (prop && parts.length > 1)? prop.resolve(parts.slice(1)) : prop
+    }
+    return prop;
+  };
+
+  var resolvePossibles = function(path) {
+    var parts = path;
+    var props = [];
+    if(path instanceof String){
+      parts = path.split(".")
+    }
+    if(parts && parts.length > 1){
+      var prop = this.resolve(parts[0]);
+      props = (prop)?  prop.resolvePossibles(parts.slice(1)) : []
+     }else if(parts && parts.length == 1){
+      props =[];
+      for(var i in this.properties){
+        if(i instanceof String && i.indexOf(parts[0]) == 0){
+          props.push({id: i, type: this.resolve(i)})
+        }
+      }
+     }
+    return props ? props : null // might want an undefined type here
+  };
+
+  var getTypeHierarchy = function(prefix) {
+    var hier = [];
+    var self = this;
+    this.propertyNames().forEach(function(p){
+      var selfPrefix = prefix+"."+p
+      hier.push(selfPrefix);
+      var prop = self.resolve(p)
+      if(prop){hier.concat(prop.getTypeHierarchy(selfPrefix))}
+    })
+    return hier;
+  }
+
+
+  var SimpleType = function(type){
+    this.type = type;
+    this.resolve = function(){}
+    this.resolvePossibles = function(){}
+    this.propertyNames = function(){return []}
+    this.properties = {}
+  }
+  SimpleType.prototype.resolvePossibles = resolvePossibles
+  SimpleType.prototype.getTypeHierarchy = getTypeHierarchy;
+  SimpleType.prototype.resolvePath = resolvePath 
+
+  var ListType = function(type){
+    this._type = type;
+    this.properties = type.properties 
+  }
+  
+  Object.defineProperty(ListType.prototype, "type", {
+    get: function() {
+        return this._type ? this._type.type : null;
+    }
+  });
+
+  ListType.prototype.resolve = function(prop) {
+    return this._type.resolve(prop)
+  };
+  
+  ListType.prototype.resolvePossibles = function() {
+    return this._type.resolvePossibles()
+  };
+
+  ListType.prototype.propertyNames = function() {
+    return this._type.propertyNames()
+  };
+
+  var CompositeType = function(type, properties) {
+    this.type = type;
+    this.properties = properties;
+  }
+
+
+  CompositeType.prototype.resolve = function(prop) {
+    return this.properties[prop]
+  };
+
+  CompositeType.prototype.propertyNames = function() {
+    var names = [];
+     for(var i in this.properties){
+      names.push(i)
+     }
+     return names;
+  };
+
+  CompositeType.prototype.resolvePossibles = resolvePossibles
+  CompositeType.prototype.getTypeHierarchy = getTypeHierarchy;
+  CompositeType.prototype.resolvePath = resolvePath 
+
+
+  var SystemTypes = function(){
+    this.types = {}
+    this.types["System.Boolean"] =  this.Boolean = new SimpleType("System.Boolean");
+    this.types["System.Integer"] =this.Integer =new SimpleType("System.Integer")
+    this.types["System.Decimal"] =this.Decimal = new SimpleType("System.Decimal")
+    this.types["System.String"] = this.String = new SimpleType("System.String")
+    this.types["System.DateTime"] =this.DateTime = new SimpleType("System.DateTime")
+    this.types["System.Time"] =this.Time = new SimpleType("System.Time")
+    this.types["System.Any"] =this.Any = new SimpleType("System.Any")
+    this.types["System.Interval"] =this.Interval = new SimpleType("System.Interval")
+    this.types["System.Null"] =this.NULL = new SimpleType("System.Null")
+    this.types["System.QuantityLiteral"] =this.QuantityLiteral = new CompositeType("System.QuanityLiteral",
+                                                  {"unit" : this.String, 
+                                                  "value" : this.Decimal});
+    this.types["System.Code"] =this.Code = new CompositeType("System.Code", 
+                                {"code" : this.String,
+                                "display" : this.String,
+                                "system" : this.String,
+                                "version" : this.String})
+
+    this.types["System.Concept"] =this.Concept = new CompositeType("System.Concept", 
+                                  {"display":this.String,
+                                   "codes": new ListType(this.Code)})
+
+
+  }
+  
+  SystemTypes.prototype.resolve = function(type) {
+      if(!type.indexOf("System") == 0){
+        type = "System."+type
+      }
+      return this.types[type]
+  };
+
+  var system_types = new SystemTypes()
+
+
+
+  var Resolver = function(context,path){
+    this.path = path;
+    this.parts = (this.path instanceof String)? this.path.split(".") : this.path
+    this.context= context;
+    this.observers = [];
+  }
+
+  Resolver.prototype.resolve = function() {
+    var prop = null;
+    if(this.parts){
+      var p = this.context.resolve(this.parts[0])
+      if (p && this.parts.length == 1){prop = p}
+      if(p && this.parts.length > 1){prop = p.resolve(this.parts.slice(1))}
+    }
+   return prop;
+   };
+
+
+
+   var ResolverType = function(resolver){
+    this.resolver = resolver;
+  }
+
+  ResolverType.prototype._resolve = function(){
+    this._type = this._type || this.resolver.resolve()
+    return this._type
+  }
+
+  Object.defineProperty(ResolverType.prototype, "type", {
+    get: function() {
+        this._resolve()
+        return this._type ? this._type.type : null;
+    }
+  });
+
+  Object.defineProperty(ResolverType.prototype, "properties", {
+    get: function() {
+        this._resolve()
+        return this._type ? this._type.properties : null;
+    }
+  });
+
+  ResolverType.prototype.resolve = function(path) {
+     if(this._resolve()){
+      return this._type.resolve(path)
+     }
+  };
+  
+  ResolverType.prototype.propertyNames = function() {
+    if(this._resolve()){
+      return this._type.propertyNames()
+    }
+  };
+
+  ResolverType.prototype.resolvePossibles = resolvePossibles
+  ResolverType.prototype.getTypeHierarchy = getTypeHierarchy;
+  ResolverType.prototype.resolvePath = resolvePath 
+
+  var Model = function(model){
+    this.update(model)
+  }
+
+  Model.prototype.update = function(model){
+    this.name = model.name;
+    this.version = model.version;
+    this.patientClassName = model.patientClassName
+    this.model = model;
+    this.types = {};
+    var self = this;
+    for(var x in (model.types || {})){
+      var v = model.types[x]
+      this.types[v.type] = new ModelType(v,this)
+    }
+  }
+
+  Model.prototype.resolve = function(type) {
+    var listType = (/list\<(.*)\>/).exec(type)
+    if(listType){
+      var t = this.resolve(listType[1])
+      return (t) ? new ListType(t) : null;
+    } // is it a ssystem type that needs to be resolved
+    else if(type.indexOf("System.") == 0){
+      return system_types.resolve(type)
+    }// is it qualified with the model name ?
+    else{
+      var t = this.types[type] 
+      if(!t && type.indexOf(this.name) != 0){
+        t =  (t) ? t : this.types[this.name+"."+type] 
+        t = (t)? t : system_types.resolve("System."+type)
+       } 
+       return t;
+    }
+
+  };
+
+
+  Model.prototype.retrevables = function(){
+    var ret = []
+    for(var t in this.types){
+       var type = this.types[t]
+      if(type.retrievable){
+        ret.push(type)
+      }
+    }
+    return ret;
+  }
+
+  Model.prototype.typeNames = function(){
+    var self = this;
+    return this.retrevables().map(function(t){
+      return t.type.substring(self.name.length+1)
+    })
+  }
+  
+ Model.prototype.fullyQualifiedTypeNames = function(){
+    return this.retrevables().map(function(t){
+      return t.type;
+    })
+  }
+  var ModelType = function(json, model){
+    this.model = model;
+    this.type = json.type;
+    this.retrievable = json.retrievable
+    this.label = json.label
+    this.properties = json.properties;
+    this.baseType = json.baseType
+  }
+
+  ModelType.prototype.getBaseType = function() {
+    if(this.baseType && !this._baseType){
+      this._baseType = this.model.resolve(this.baseType)
+    }
+    return this._baseType
+  };
+  ModelType.prototype.resolve = function(prop) {
+    var prop = this.properties[prop];
+    if(!prop && this.getBaseType() ){prop = this.getBaseType().resolve(prop)}
+    return prop ? this.model.resolve(prop.type) : null
+  };
+  
+  ModelType.prototype.propertyNames = function() {
+     var names = [];
+     for(var i in this.properties){
+      names.push(i)
+     }
+     return this.getBaseType() ? names.concat(this.getBaseType().propertyNames()) : names
+  };
+
+  ModelType.prototype.resolvePossibles = resolvePossibles
+  ModelType.prototype.getTypeHierarchy = getTypeHierarchy;
+  ModelType.prototype.resolvePath = resolvePath 
+
+ exports.System = system_types 
+ exports.ModelType = ModelType
+ exports.Model = Model 
+ exports.SimpleType = SimpleType 
+ exports.CompositeType = CompositeType 
+ exports.ListType = ListType 
+ exports.ResolverType = ResolverType
+
+});
+
+define("ace/mode/cql/model_manager",["require","exports","module","ace/config","ace/lib/net","ace/mode/cql/model"], function(require, exports, module) {
+  "use strict";
+  var config = require("../../config");
+  var net = require("../../lib/net");
+  var Model = require("./model").Model
+  var modelId = function(id,version){
+    return version ?  id+"_"+version: id
+  }
+  var ModelRetriever = function(baseUrl){
+    this.baseUrl = baseUrl;
+    if(this.baseUrl[this.baseUrl.length-1] != '/'){
+      this.baseUrl += "/"
+    }
+  }
+
+  ModelRetriever.prototype.loadModel = function(id,version,callback) {
+    var self = this;
+    
+    net.get(this.baseUrl+modelId(id,version)+".json", function(m) {
+      if (m) {
+        callback(JSON.parse(m));
+      }
+    });
+  };
+
+  function ModelManager(modelResolver){
+    this.resolver = modelResolver;
+    this.models = {};
+    this.loading = {}
+
+  }
+  
+  ModelManager.prototype.constructor = ModelManager;
+ 
+  ModelManager.prototype.loadModel = function(id,version){
+    var self = this;
+    var mid = modelId(id,version)
+    console.log("has MID " +mid + " "+this.loading[mid])
+    if (this.models[mid]){return}
+    console.log("AM loading "+id)
+    console.log(JSON.stringify(this.loading))
+    this.loading[mid] = true
+    this.models[mid] = new Model({})
+    this.resolver.loadModel(id,version,function(model){
+      if(self.models[mid]){
+        self.models[mid].update(model)
+      } else {
+        self.models[mid] = new Model(model)
+      }
+      self.loading[mid] = false
+    })
+  }
+
+  ModelManager.prototype.getModel = function(id,version) {
+    var mid = modelId(id,version);
+    return this.models[mid];
+  }
+
+  exports.ModelManager = ModelManager
+  exports.ModelManagerInstance = new ModelManager(new ModelRetriever("./models/"));
+});
+
+define("ace/token_iterator",["require","exports","module"], function(require, exports, module) {
+"use strict";
+var TokenIterator = function(session, initialRow, initialColumn) {
+    this.$session = session;
+    this.$row = initialRow;
+    this.$rowTokens = session.getTokens(initialRow);
+
+    var token = session.getTokenAt(initialRow, initialColumn);
+    this.$tokenIndex = token ? token.index : -1;
+};
+
+(function() { 
+    this.stepBackward = function() {
+        this.$tokenIndex -= 1;
+        
+        while (this.$tokenIndex < 0) {
+            this.$row -= 1;
+            if (this.$row < 0) {
+                this.$row = 0;
+                return null;
+            }
+                
+            this.$rowTokens = this.$session.getTokens(this.$row);
+            this.$tokenIndex = this.$rowTokens.length - 1;
+        }
+            
+        return this.$rowTokens[this.$tokenIndex];
+    };   
+    this.stepForward = function() {
+        this.$tokenIndex += 1;
+        var rowCount;
+        while (this.$tokenIndex >= this.$rowTokens.length) {
+            this.$row += 1;
+            if (!rowCount)
+                rowCount = this.$session.getLength();
+            if (this.$row >= rowCount) {
+                this.$row = rowCount - 1;
+                return null;
+            }
+
+            this.$rowTokens = this.$session.getTokens(this.$row);
+            this.$tokenIndex = 0;
+        }
+            
+        return this.$rowTokens[this.$tokenIndex];
+    };      
+    this.getCurrentToken = function () {
+        return this.$rowTokens[this.$tokenIndex];
+    };      
+    this.getCurrentTokenRow = function () {
+        return this.$row;
+    };     
+    this.getCurrentTokenColumn = function() {
+        var rowTokens = this.$rowTokens;
+        var tokenIndex = this.$tokenIndex;
+        var column = rowTokens[tokenIndex].start;
+        if (column !== undefined)
+            return column;
+            
+        column = 0;
+        while (tokenIndex > 0) {
+            tokenIndex -= 1;
+            column += rowTokens[tokenIndex].value.length;
+        }
+        
+        return column;  
+    };
+    this.getCurrentTokenPosition = function() {
+        return {row: this.$row, column: this.getCurrentTokenColumn()};
+    };
+            
+}).call(TokenIterator.prototype);
+
+exports.TokenIterator = TokenIterator;
+});
+
+define("ace/mode/cql/library_manager",["require","exports","module","ace/config","ace/lib/net","ace/mode/cql/cqlLexer","ace/mode/cql/cqlParser","ace/mode/cql/cqlListener","ace/mode/cql/antlr4/InputStream","ace/mode/cql/antlr4/CommonTokenStream","ace/token_iterator"], function(require, exports, module) {
+  "use strict";
+  var config = require("../../config");
+  var net = require("../../lib/net");
+  var cqlLexer = require("./cqlLexer").cqlLexer;
+  var cqlParser = require("./cqlParser").cqlParser;
+  var cqlListener = require("./cqlListener").cqlListener;
+  var InputStream = require("./antlr4/InputStream").InputStream;
+  var CommonTokenStream = require("./antlr4/CommonTokenStream").CommonTokenStream;
+  var TokenIterator = require("../../token_iterator").TokenIterator
+  
+  
+  var libId = function(id,version){
+    return version ?  id+"_"+version: id
+  }
+
+  var Library = function(cql){
+    this.type = "Library"
+    this.cql = cql;
+    this.listener = new cqlListener()
+    this.reparse(cql);
+  }
+
+  Library.prototype.update = function(cql){
+    this.cql = cql;
+    this.reparse(cql);
+  }
+
+  Library.prototype.reparse = function(cql){
+    if(!cql) {return}
+    var chars = new InputStream(cql);
+    var lexer = new cqlLexer(chars);
+    var tokens  = new CommonTokenStream(lexer);
+    var parser = new cqlParser(tokens);
+    this.listener = new cqlListener();
+    parser.addParseListener(this.listener);
+    parser.buildParseTrees = true;
+    parser.logic();
+  }
+
+  Library.prototype.resolve = function(id){
+    return this.listener.currentContext.resolve(id)
+  }
+
+  Library.prototype.propertyNames = function(){
+    var props = [] 
+    for(var x in this.listener.currentContext.variables){
+      props.push(x)
+    }
+    return props;
+  }
+
+  Library.prototype.valuesets = function(cql){
+    
+  }
+
+  Library.prototype.paramters = function(cql){
+    
+  }
+
+  Library.prototype.statements = function(cql){
+    
+  }
+
+  Library.prototype.functions = function(cql){
+    
+  }
+
+
+
+
+
+  var LibraryRetriever = function(baseUrl){
+    this.baseUrl = baseUrl;
+    if(this.baseUrl[this.baseUrl.length-1] != '/'){
+      this.baseUrl += "/"
+    }
+  }
+
+  LibraryRetriever.prototype.load= function(id,version,callback) {
+    var self = this;
+    
+    net.get(this.baseUrl+libId(id,version)+".cql", function(m) {
+      if (m) {
+        callback(m);
+      }
+    });
+  };
+
+  function LibraryManager(libraryResolver){
+    this.resolver = libraryResolver;
+    this.libraries = {};
+  }
+  
+  LibraryManager.prototype.constructor = LibraryManager;
+ 
+  LibraryManager.prototype.loadLibrary = function(id,version){
+    var self = this;
+    var mid = libId(id,version)
+    if (this.libraries[mid]){return}
+    console.log("AM loading "+id)
+    this.libraries[mid] = new Library()
+    this.resolver.load(id,version,function(lib){
+      if(self.libraries[mid]){
+        self.libraries[mid].update(lib)
+      } else {
+        self.libraries[mid] = new Library(lib)
+      }
+    })
+  }
+
+  LibraryManager.prototype.getLibrary = function(id,version) {
+    var mid = libId(id,version);
+    return this.libraries[mid];
+  }
+
+  exports.LibraryManager = LibraryManager
+  exports.LibraryManagerInstance = new LibraryManager(new LibraryRetriever("./libraries/"));
+});
+
+define("ace/mode/cql/cqlListener",["require","exports","module","ace/mode/cql/antlr4/index","ace/mode/cql/parse_context","ace/mode/cql/model","ace/mode/cql/model","ace/mode/cql/model","ace/mode/cql/model","ace/mode/cql/parse_context","ace/mode/cql/model","ace/mode/cql/model_manager","ace/mode/cql/library_manager","ace/mode/cql/library_manager","ace/mode/cql/library_manager"], function(require, exports, module) {
 var antlr4 = require('./antlr4/index');
+var Context = require("./parse_context").Context
+var CompositeType = require("./model").CompositeType
+var ListType = require("./model").ListType
+var SimpleType = require('./model').SimpleType
+var ResolverType = require("./model").ResolverType
+var Resolver = require("./parse_context").Resolver
+var System = require("./model").System  
+var ModelManager = require("./model_manager").ModelManagerInstance
+var LibMan =require("./library_manager")
+var LibraryManager = require("./library_manager").LibraryManagerInstance
+ 
+
+function qualifiedResolver(ctx,context){
+  var parts = []
+  var qs = ctx.qualifier();
+  for(var i = 0; qs && i < qs.length; i++){
+    parts.push(qs[i].getText());
+  }
+  var id = ctx.identifier();
+  if(id) {parts.push(id.getText())}
+  return new ResolverType(new Resolver(context,parts))
+}
 function cqlListener() {
 	antlr4.tree.ParseTreeListener.call(this);
   this.includes = {};// just the name and alias for now.  SHould be expandable to pull in other info from lib 
@@ -9831,6 +11117,12 @@ function cqlListener() {
   this.functions = {}; // name, params?
   this.expressions = []; // just identifiers ?
   this.valuesets = []; // should be indentified as a valueset
+  this.currentContext = null;
+  this.types = [];
+  this.rules = [];
+  this.index=0;
+  LibraryManager = require("./library_manager").LibraryManagerInstance
+ 
 	return this;
 }
 
@@ -9846,9 +11138,40 @@ cqlListener.prototype.toModel = function(){
    expressions: this.expressions,
    valuesets: this.valuesets}
 }
+
+cqlListener.prototype.exitEveryRule = function( ctx){
+if(ctx && ctx.start && ctx.stop){
+  this.rules.push({index: this.index++, start: ctx.start.start, stop: ctx.stop.stop , ruleContext: ctx, context: this.currentContext});
+}else if(ctx && ctx.start) {
+  this.rules.push({index: this.index++,start: ctx.start.start, stop: ctx.start.stop , ruleContext: ctx, context: this.currentContext});
+
+}
+
+}
+
+cqlListener.prototype.getRuleAt = function(index) {
+
+  var filtered = this.rules.filter(function(r){
+    return r.start <= index && r.stop >= index;
+  })
+  filtered.sort(function(b,a){ 
+      return (a.index > b.index)? -1 : 1
+    });
+
+  var rule = filtered[0]
+  return rule;
+};
 cqlListener.prototype.enterLogic = function(ctx) {
+  this.currentContext = new Context()
+  console.log("start logic")
 };
 cqlListener.prototype.exitLogic = function(ctx) {
+  if(this.models[0]){
+    var ptype = this.models[0].patientClassName
+    if(ptype){
+      this.currentContext.set("Patient", this.models[0].resolve(ptype))
+    }
+  }
 };
 cqlListener.prototype.enterLibraryDefinition = function(ctx) {
 };
@@ -9858,13 +11181,20 @@ cqlListener.prototype.enterUsingDefinition = function(ctx) {
  
 };
 cqlListener.prototype.exitUsingDefinition = function(ctx) {
-   this.models.push(ctx.identifier().stop.text);
+   var mid = ctx.identifier().getText()
+   ModelManager.loadModel(mid)
+   this.models.push(ModelManager.getModel(mid));
+   this.currentContext.set(ctx.identifier().getText(), ModelManager.getModel(mid))
 };
 cqlListener.prototype.enterIncludeDefinition = function(ctx) {
  
 };
 cqlListener.prototype.exitIncludeDefinition = function(ctx) {
-   this.includes[ctx.identifier().stop.text] = ctx.localIdentifier() ? ctx.localIdentifier().stop.text : ctx.identifier().stop.text ;
+   var libId = ctx.identifier().getText();
+   var alias = ctx.localIdentifier() ? ctx.localIdentifier().getText(): ctx.identifier().getText() ;
+   this.includes[libId] = alias;
+   LibraryManager.loadLibrary(libId)
+   this.currentContext.set(alias, LibraryManager.getLibrary(libId))
 };
 cqlListener.prototype.enterLocalIdentifier = function(ctx) {
 };
@@ -9878,7 +11208,9 @@ cqlListener.prototype.enterParameterDefinition = function(ctx) {
  
 };
 cqlListener.prototype.exitParameterDefinition = function(ctx) {
-   this.paramteters[ctx.identifier().stop.text] = ctx.typeSpecifier();
+   var spec = ctx.typeSpecifier() || ctx.expression()
+   var type = spec ? spec.__type : null
+   this.currentContext.set(ctx.identifier().getText(), type)
 };
 cqlListener.prototype.enterCodesystemDefinition = function(ctx) {
 };
@@ -9888,7 +11220,7 @@ cqlListener.prototype.enterValuesetDefinition = function(ctx) {
   
 };
 cqlListener.prototype.exitValuesetDefinition = function(ctx) {
-  this.valuesets.push(ctx.identifier().stop.text);
+  this.valuesets.push(ctx.identifier().getText());
 };
 cqlListener.prototype.enterCodesystems = function(ctx) {
 };
@@ -9917,30 +11249,68 @@ cqlListener.prototype.exitVersionSpecifier = function(ctx) {
 cqlListener.prototype.enterTypeSpecifier = function(ctx) {
 };
 cqlListener.prototype.exitTypeSpecifier = function(ctx) {
+  if(ctx.namedTypeSpecifier()){
+    ctx.__type = ctx.namedTypeSpecifier().__type 
+  }else if(ctx.listTypeSpecifier()){
+    ctx.__type = ctx.listTypeSpecifier().__type 
+  }else if(ctx.intervalTypeSpecifier()){
+    ctx.__type = ctx.intervalTypeSpecifier().__type 
+  }else if(ctx.tupleTypeSpecifier()){
+    ctx.__type = ctx.tupleTypeSpecifier().__type
+  }
 };
 cqlListener.prototype.enterNamedTypeSpecifier = function(ctx) {
 };
 cqlListener.prototype.exitNamedTypeSpecifier = function(ctx) {
+   var model = (ctx.modelIdentifier()) ? ctx.modelIdentifier().getText() : null
+   var klass = (ctx.identifier()) ? ctx.identifier().getText() : null
+
+   if(model){
+      if(model == "System"){
+        ctx.__type = System.resolve(klass) 
+      }else{
+        ctx.__type = this.currentContext.resolve(model).resolve(klass)
+      }
+   }else if(this.models.length == 1){
+      ctx.__type = this.models[0].resolve(klass)
+   }else{
+      ctx.__type = System.ANY
+   }
 };
 cqlListener.prototype.enterModelIdentifier = function(ctx) {
 };
 cqlListener.prototype.exitModelIdentifier = function(ctx) {
+
 };
 cqlListener.prototype.enterListTypeSpecifier = function(ctx) {
 };
 cqlListener.prototype.exitListTypeSpecifier = function(ctx) {
+  ctx.__type = new ListType(ctx.__type)
 };
 cqlListener.prototype.enterIntervalTypeSpecifier = function(ctx) {
 };
 cqlListener.prototype.exitIntervalTypeSpecifier = function(ctx) {
+  ctx.__type = System.Interval 
 };
 cqlListener.prototype.enterTupleTypeSpecifier = function(ctx) {
 };
 cqlListener.prototype.exitTupleTypeSpecifier = function(ctx) {
+  
+  ctx.__aliases = {}
+  for(var i = 0; i < ctx.children.length; i++){
+    var child = ctx.children[i];
+    if(child.__alias){
+      ctx.__aliases[child.__alias] = child.__type
+    }
+    
+  }
+  ctx.__type =  new CompositeType("tuple",ctx.__aliases)
 };
 cqlListener.prototype.enterTupleElementDefinition = function(ctx) {
 };
 cqlListener.prototype.exitTupleElementDefinition = function(ctx) {
+  ctx.__alias = ctx.identifier().getText()
+  ctx.__type = ctx.typeSpecifier().__type
 };
 cqlListener.prototype.enterStatement = function(ctx) {
 };
@@ -9949,40 +11319,57 @@ cqlListener.prototype.exitStatement = function(ctx) {
 cqlListener.prototype.enterExpressionDefinition = function(ctx) {
 };
 cqlListener.prototype.exitExpressionDefinition = function(ctx) {
-  this.expressions.push(ctx.identifier().stop.text);
+  this.expressions.push(ctx.identifier().getText());
+  this.currentContext.set(ctx.identifier().getText(),ctx.expression().__type)
 };
 cqlListener.prototype.enterContextDefinition = function(ctx) {
 };
 cqlListener.prototype.exitContextDefinition = function(ctx) {
 };
 cqlListener.prototype.enterFunctionDefinition = function(ctx) {
+  this.currentContext = this.currentContext.createChildContext(ctx.start,ctx.end)
 };
 cqlListener.prototype.exitFunctionDefinition = function(ctx) {
-  this.functions[ctx.identifier().stop.text] = ctx.operandDefinition().map(function(o){return [o.identifier(),o.typeSpecifier()]});
+  this.functions[ctx.identifier().getText()] = ctx.operandDefinition().map(function(o){return [o.identifier(),o.typeSpecifier()]});
+  this.currentContext = this.currentContext.parent;
 };
 cqlListener.prototype.enterOperandDefinition = function(ctx) {
 };
 cqlListener.prototype.exitOperandDefinition = function(ctx) {
+  this.currentContext.set(ctx.identifier().getText(),ctx.typeSpecifier().__type)
 };
 cqlListener.prototype.enterFunctionBody = function(ctx) {
 };
 cqlListener.prototype.exitFunctionBody = function(ctx) {
+  ctx.__type = ctx.expression().__type
 };
 cqlListener.prototype.enterQuerySource = function(ctx) {
 };
 cqlListener.prototype.exitQuerySource = function(ctx) {
+  if(ctx.retrieve()){
+    ctx.__type = ctx.retrieve().__type;
+  }else if(ctx.qualifiedIdentifier()){
+    ctx.__type = qualifiedResolver(ctx.qualifiedIdentifier(), this.currentContext)
+  }else if(ctx.expression()) {
+    ctx.__type = ctx.expression().__type;
+  }
 };
 cqlListener.prototype.enterAliasedQuerySource = function(ctx) {
 };
 cqlListener.prototype.exitAliasedQuerySource = function(ctx) {
+  ctx.__alias = ctx.alias().identifier().getText()
+  ctx.__type = ctx.querySource().__type
+  this.currentContext.set(ctx.__alias, ctx.__type)
 };
 cqlListener.prototype.enterAlias = function(ctx) {
 };
 cqlListener.prototype.exitAlias = function(ctx) {
 };
 cqlListener.prototype.enterQueryInclusionClause = function(ctx) {
+  this.currentContext = this.currentContext.createChildContext(ctx.start,ctx.stop)
 };
 cqlListener.prototype.exitQueryInclusionClause = function(ctx) {
+  this.currentContext = this.currentContext.parent;
 };
 cqlListener.prototype.enterWithClause = function(ctx) {
 };
@@ -9993,12 +11380,16 @@ cqlListener.prototype.enterWithoutClause = function(ctx) {
 cqlListener.prototype.exitWithoutClause = function(ctx) {
 };
 cqlListener.prototype.enterRetrieve = function(ctx) {
+
 };
 cqlListener.prototype.exitRetrieve = function(ctx) {
+   ctx.__type =ctx.namedTypeSpecifier().__type // new ModelType(this,model,klass) should be model class from ctx.namedTypeSpecifier()
 };
 cqlListener.prototype.enterValuesetPathIdentifier = function(ctx) {
+  var a = 1;
 };
 cqlListener.prototype.exitValuesetPathIdentifier = function(ctx) {
+  var a = 1;
 };
 cqlListener.prototype.enterValueset = function(ctx) {
 };
@@ -10009,28 +11400,58 @@ cqlListener.prototype.enterQualifier = function(ctx) {
 cqlListener.prototype.exitQualifier = function(ctx) {
 };
 cqlListener.prototype.enterQuery = function(ctx) {
+  this.currentContext = this.currentContext.createChildContext(ctx.start,ctx.stop)
 };
 cqlListener.prototype.exitQuery = function(ctx) {
+  var listType = null;
+  if (ctx.returnClause()){
+   listType = ctx.returnClause().__type 
+  }else if(ctx.sourceClause().__alias){ 
+    listType = ctx.sourceClause().__type
+  }else{
+    listType = new CompositeType("tupel",ctx.sourceClause().__aliases) // new TupleType(ctx.__aliases, this.context) // make into tuple type with aliases ctx.__aliases; // this will be a tuple of all the aliased q sources and defined vars
+  }// this will be a list of whatever the return result is
+  ctx.__type = new ListType(listType);
+  this.currentContext = this.currentContext.parent;
 };
 cqlListener.prototype.enterSourceClause = function(ctx) {
 };
 cqlListener.prototype.exitSourceClause = function(ctx) {
+  if(ctx.singleSourceClause()){
+    ctx.__alias= ctx.singleSourceClause().__alias 
+    ctx.__type = ctx.singleSourceClause().__type
+  }else {
+    ctx.__aliases = ctx.multipleSourceClause().__aliases;
+  }
 };
 cqlListener.prototype.enterSingleSourceClause = function(ctx) {
 };
 cqlListener.prototype.exitSingleSourceClause = function(ctx) {
+  ctx.__alias = ctx.aliasedQuerySource().__alias
+  ctx.__type = ctx.aliasedQuerySource().__type;
 };
 cqlListener.prototype.enterMultipleSourceClause = function(ctx) {
 };
 cqlListener.prototype.exitMultipleSourceClause = function(ctx) {
+  ctx.__aliases = {}
+  var children = ctx.aliasedQuerySource()
+  for(var i = 0; i < children.length; i++){
+    var child = children[i];
+    if(child.__alias){
+      ctx.__aliases[child.__alias] = child.__type
+    }
+    
+  }
 };
 cqlListener.prototype.enterDefineClause = function(ctx) {
 };
 cqlListener.prototype.exitDefineClause = function(ctx) {
+
 };
 cqlListener.prototype.enterDefineClauseItem = function(ctx) {
 };
 cqlListener.prototype.exitDefineClauseItem = function(ctx) {
+  this.currentContext.set(ctx.identifier().getText(),ctx.expression().__type)
 };
 cqlListener.prototype.enterWhereClause = function(ctx) {
 };
@@ -10039,6 +11460,7 @@ cqlListener.prototype.exitWhereClause = function(ctx) {
 cqlListener.prototype.enterReturnClause = function(ctx) {
 };
 cqlListener.prototype.exitReturnClause = function(ctx) {
+  ctx.__type = ctx.expression().__type
 };
 cqlListener.prototype.enterSortClause = function(ctx) {
 };
@@ -10055,78 +11477,103 @@ cqlListener.prototype.exitSortByItem = function(ctx) {
 cqlListener.prototype.enterQualifiedIdentifier = function(ctx) {
 };
 cqlListener.prototype.exitQualifiedIdentifier = function(ctx) {
+  ctx.__type = new ResolverType(new Resolver(this.currentContext, ctx.getText()))
 };
 cqlListener.prototype.enterDurationBetweenExpression = function(ctx) {
 };
 cqlListener.prototype.exitDurationBetweenExpression = function(ctx) {
+ ctx.__type = System.Boolean
 };
 cqlListener.prototype.enterInFixSetExpression = function(ctx) {
 };
 cqlListener.prototype.exitInFixSetExpression = function(ctx) {
+  ctx.__type = ctx.expression()[0].__type
 };
 cqlListener.prototype.enterRetrieveExpression = function(ctx) {
+
 };
 cqlListener.prototype.exitRetrieveExpression = function(ctx) {
+  ctx.__type = ctx.retrieve().__type
 };
 cqlListener.prototype.enterTimingExpression = function(ctx) {
 };
 cqlListener.prototype.exitTimingExpression = function(ctx) {
+  ctx.__type = System.Boolean
 };
 cqlListener.prototype.enterNotExpression = function(ctx) {
 };
 cqlListener.prototype.exitNotExpression = function(ctx) {
+  ctx.__type = System.Boolean 
 };
 cqlListener.prototype.enterQueryExpression = function(ctx) {
 };
 cqlListener.prototype.exitQueryExpression = function(ctx) {
+  ctx.__type = ctx.query().__type 
 };
 cqlListener.prototype.enterBooleanExpression = function(ctx) {
 };
 cqlListener.prototype.exitBooleanExpression = function(ctx) {
+   ctx.__type = System.Boolean
 };
 cqlListener.prototype.enterOrExpression = function(ctx) {
 };
 cqlListener.prototype.exitOrExpression = function(ctx) {
+   ctx.__type =System.Boolean
 };
 cqlListener.prototype.enterCastExpression = function(ctx) {
 };
 cqlListener.prototype.exitCastExpression = function(ctx) {
+   ctx.__type = ctx.typeSpecifier().__type
 };
 cqlListener.prototype.enterAndExpression = function(ctx) {
 };
 cqlListener.prototype.exitAndExpression = function(ctx) {
+  ctx.__type = System.Boolean 
 };
 cqlListener.prototype.enterBetweenExpression = function(ctx) {
 };
 cqlListener.prototype.exitBetweenExpression = function(ctx) {
+  ctx.__type = System.Boolean 
 };
 cqlListener.prototype.enterMembershipExpression = function(ctx) {
 };
 cqlListener.prototype.exitMembershipExpression = function(ctx) {
+  ctx.__type = System.Boolean 
 };
 cqlListener.prototype.enterDifferenceBetweenExpression = function(ctx) {
 };
 cqlListener.prototype.exitDifferenceBetweenExpression = function(ctx) {
+  ctx.__type = System.Decimal
 };
 cqlListener.prototype.enterInequalityExpression = function(ctx) {
+  ctx.__type = System.Boolean
 };
 cqlListener.prototype.exitInequalityExpression = function(ctx) {
+  ctx.__type = System.Boolean
 };
 cqlListener.prototype.enterEqualityExpression = function(ctx) {
 };
 cqlListener.prototype.exitEqualityExpression = function(ctx) {
+  ctx.__type = System.Boolean
 };
 cqlListener.prototype.enterExistenceExpression = function(ctx) {
 };
 cqlListener.prototype.exitExistenceExpression = function(ctx) {
+  ctx.__type = System.Boolean 
 };
 cqlListener.prototype.enterTermExpression = function(ctx) {
 };
 cqlListener.prototype.exitTermExpression = function(ctx) {
+  ctx.__type = ctx.expressionTerm().__type 
 };
 cqlListener.prototype.enterTypeExpression = function(ctx) {
 };
 cqlListener.prototype.exitTypeExpression = function(ctx) {
+  if(ctx.children[1].getText() == "is"){
+    ctx.__type = Syastem.Boolean
+  }else{
+    ctx.__type = ctx.typeSpecifier().__type
+  }
 };
 cqlListener.prototype.enterDateTimePrecision = function(ctx) {
 };
@@ -10143,14 +11590,18 @@ cqlListener.prototype.exitPluralDateTimePrecision = function(ctx) {
 cqlListener.prototype.enterAdditionExpressionTerm = function(ctx) {
 };
 cqlListener.prototype.exitAdditionExpressionTerm = function(ctx) {
+  ctx.__type = System.Decimal 
 };
 cqlListener.prototype.enterIndexedExpressionTerm = function(ctx) {
+ 
 };
 cqlListener.prototype.exitIndexedExpressionTerm = function(ctx) {
+  ctx.__type = ctx.expressionTerm().__type 
 };
 cqlListener.prototype.enterWidthExpressionTerm = function(ctx) {
 };
 cqlListener.prototype.exitWidthExpressionTerm = function(ctx) {
+  ctx.__type = System.Any 
 };
 cqlListener.prototype.enterTimeUnitExpressionTerm = function(ctx) {
 };
@@ -10159,62 +11610,77 @@ cqlListener.prototype.exitTimeUnitExpressionTerm = function(ctx) {
 cqlListener.prototype.enterIfThenElseExpressionTerm = function(ctx) {
 };
 cqlListener.prototype.exitIfThenElseExpressionTerm = function(ctx) {
+  ctx.__type = System.Any 
 };
 cqlListener.prototype.enterTimeBoundaryExpressionTerm = function(ctx) {
 };
 cqlListener.prototype.exitTimeBoundaryExpressionTerm = function(ctx) {
+  ctx.__type = System.DateTime 
 };
 cqlListener.prototype.enterElementExtractorExpressionTerm = function(ctx) {
 };
 cqlListener.prototype.exitElementExtractorExpressionTerm = function(ctx) {
+  ctx.__type = ctx.expressionTerm().__type 
 };
 cqlListener.prototype.enterConversionExpressionTerm = function(ctx) {
 };
 cqlListener.prototype.exitConversionExpressionTerm = function(ctx) {
+  ctx.__type = ctx.typeSpecifier().__type
 };
 cqlListener.prototype.enterTypeExtentExpressionTerm = function(ctx) {
 };
 cqlListener.prototype.exitTypeExtentExpressionTerm = function(ctx) {
+  ctx.__type = System.Any 
 };
 cqlListener.prototype.enterPredecessorExpressionTerm = function(ctx) {
 };
 cqlListener.prototype.exitPredecessorExpressionTerm = function(ctx) {
+  ctx.__type = ctx.expressionTerm().__type
 };
 cqlListener.prototype.enterAccessorExpressionTerm = function(ctx) {
 };
 cqlListener.prototype.exitAccessorExpressionTerm = function(ctx) {
+  ctx.__type = ctx.expressionTerm().__type ?  ctx.expressionTerm().__type.resolve(ctx.identifier().getText()) : System.Any 
 };
 cqlListener.prototype.enterMultiplicationExpressionTerm = function(ctx) {
 };
 cqlListener.prototype.exitMultiplicationExpressionTerm = function(ctx) {
+  ctx.__type = new SimpleType("number")
 };
 cqlListener.prototype.enterAggregateExpressionTerm = function(ctx) {
 };
 cqlListener.prototype.exitAggregateExpressionTerm = function(ctx) {
+  ctx.__type = ctx.expression().__type
 };
 cqlListener.prototype.enterDurationExpressionTerm = function(ctx) {
 };
 cqlListener.prototype.exitDurationExpressionTerm = function(ctx) {
+  ctx.__type = System.Decimal  
 };
 cqlListener.prototype.enterCaseExpressionTerm = function(ctx) {
 };
 cqlListener.prototype.exitCaseExpressionTerm = function(ctx) {
+  ctx.__type = System.Any // need to do this for now, not really sure what else can be done
 };
 cqlListener.prototype.enterPowerExpressionTerm = function(ctx) {
 };
 cqlListener.prototype.exitPowerExpressionTerm = function(ctx) {
+  ctx.__type = System.Decimal 
 };
 cqlListener.prototype.enterSuccessorExpressionTerm = function(ctx) {
 };
 cqlListener.prototype.exitSuccessorExpressionTerm = function(ctx) {
+  ctx.__type = ctx.expressionTerm().__type 
 };
 cqlListener.prototype.enterPolarityExpressionTerm = function(ctx) {
 };
 cqlListener.prototype.exitPolarityExpressionTerm = function(ctx) {
+  ctx.__type = ctx.expressionTerm().__type 
 };
 cqlListener.prototype.enterTermExpressionTerm = function(ctx) {
 };
 cqlListener.prototype.exitTermExpressionTerm = function(ctx) {
+  ctx.__type = ctx.term().__type
 };
 cqlListener.prototype.enterInvocationExpressionTerm = function(ctx) {
 };
@@ -10243,86 +11709,116 @@ cqlListener.prototype.exitQuantityOffset = function(ctx) {
 cqlListener.prototype.enterConcurrentWithIntervalOperatorPhrase = function(ctx) {
 };
 cqlListener.prototype.exitConcurrentWithIntervalOperatorPhrase = function(ctx) {
+  ctx.__type = System.Boolean
 };
 cqlListener.prototype.enterIncludesIntervalOperatorPhrase = function(ctx) {
 };
 cqlListener.prototype.exitIncludesIntervalOperatorPhrase = function(ctx) {
+  ctx.__type = System.Boolean
 };
 cqlListener.prototype.enterIncludedInIntervalOperatorPhrase = function(ctx) {
 };
 cqlListener.prototype.exitIncludedInIntervalOperatorPhrase = function(ctx) {
+  ctx.__type = System.Boolean
 };
 cqlListener.prototype.enterBeforeOrAfterIntervalOperatorPhrase = function(ctx) {
+
 };
 cqlListener.prototype.exitBeforeOrAfterIntervalOperatorPhrase = function(ctx) {
+  ctx.__type = System.Boolean
 };
 cqlListener.prototype.enterWithinIntervalOperatorPhrase = function(ctx) {
+  ctx.__type = System.Boolean
 };
 cqlListener.prototype.exitWithinIntervalOperatorPhrase = function(ctx) {
+  ctx.__type = System.Boolean
 };
 cqlListener.prototype.enterMeetsIntervalOperatorPhrase = function(ctx) {
 };
 cqlListener.prototype.exitMeetsIntervalOperatorPhrase = function(ctx) {
+  ctx.__type = System.Boolean
 };
 cqlListener.prototype.enterOverlapsIntervalOperatorPhrase = function(ctx) {
 };
 cqlListener.prototype.exitOverlapsIntervalOperatorPhrase = function(ctx) {
+  ctx.__type = System.Boolean
 };
 cqlListener.prototype.enterStartsIntervalOperatorPhrase = function(ctx) {
 };
 cqlListener.prototype.exitStartsIntervalOperatorPhrase = function(ctx) {
+  ctx.__type = System.Boolean
 };
 cqlListener.prototype.enterEndsIntervalOperatorPhrase = function(ctx) {
 };
 cqlListener.prototype.exitEndsIntervalOperatorPhrase = function(ctx) {
+  ctx.__type = System.Boolean
 };
 cqlListener.prototype.enterIdentifierTerm = function(ctx) {
 };
 cqlListener.prototype.exitIdentifierTerm = function(ctx) {
+  ctx.__type = new ResolverType(new Resolver(this.currentContext,ctx.getText()))
 };
 cqlListener.prototype.enterLiteralTerm = function(ctx) {
 };
 cqlListener.prototype.exitLiteralTerm = function(ctx) {
+  ctx.__type = ctx.literal().__type
 };
 cqlListener.prototype.enterIntervalSelectorTerm = function(ctx) {
 };
 cqlListener.prototype.exitIntervalSelectorTerm = function(ctx) {
+  ctx.__type = System.Interval
 };
 cqlListener.prototype.enterTupleSelectorTerm = function(ctx) {
 };
 cqlListener.prototype.exitTupleSelectorTerm = function(ctx) {
+  ctx.__type = ctx.tupleSelector().__type
 };
 cqlListener.prototype.enterInstanceSelectorTerm = function(ctx) {
 };
 cqlListener.prototype.exitInstanceSelectorTerm = function(ctx) {
 };
 cqlListener.prototype.enterListSelectorTerm = function(ctx) {
+  ctx.__type = ctx.listSelector().__type
 };
 cqlListener.prototype.exitListSelectorTerm = function(ctx) {
 };
 cqlListener.prototype.enterCodeSelectorTerm = function(ctx) {
 };
 cqlListener.prototype.exitCodeSelectorTerm = function(ctx) {
+    ctx.__type = System.Code 
 };
 cqlListener.prototype.enterConceptSelectorTerm = function(ctx) {
+
 };
 cqlListener.prototype.exitConceptSelectorTerm = function(ctx) {
+  ctx.__type = System.Concept
 };
 cqlListener.prototype.enterParenthesizedTerm = function(ctx) {
 };
 cqlListener.prototype.exitParenthesizedTerm = function(ctx) {
+  ctx.__type = ctx.expression().__type
 };
 cqlListener.prototype.enterIntervalSelector = function(ctx) {
+
 };
 cqlListener.prototype.exitIntervalSelector = function(ctx) {
+  ctx.__type = System.Interval
 };
 cqlListener.prototype.enterTupleSelector = function(ctx) {
 };
 cqlListener.prototype.exitTupleSelector = function(ctx) {
+  var properties = {}
+  var children = ctx.tupleElementSelector()
+  for(var i = 0; i< children.length ; i++){
+    properties[children[i].__alias] = children[i].__type
+  }
+  ctx.__type = new CompositeType("tuple", properties);
 };
 cqlListener.prototype.enterTupleElementSelector = function(ctx) {
 };
 cqlListener.prototype.exitTupleElementSelector = function(ctx) {
+  ctx.__alias = ctx.identifier().getText()
+   ctx.__type = ctx.expression().__type
 };
 cqlListener.prototype.enterInstanceSelector = function(ctx) {
 };
@@ -10335,6 +11831,8 @@ cqlListener.prototype.exitInstanceElementSelector = function(ctx) {
 cqlListener.prototype.enterListSelector = function(ctx) {
 };
 cqlListener.prototype.exitListSelector = function(ctx) {
+  if(ctx.typeSpecifier())
+    ctx.__type = new ListeType(ctx.typeSpecifier().__type)
 };
 cqlListener.prototype.enterDisplayClause = function(ctx) {
 };
@@ -10343,46 +11841,58 @@ cqlListener.prototype.exitDisplayClause = function(ctx) {
 cqlListener.prototype.enterCodeSelector = function(ctx) {
 };
 cqlListener.prototype.exitCodeSelector = function(ctx) {
+  ctx.__type = System.Code
 };
 cqlListener.prototype.enterConceptSelector = function(ctx) {
 };
 cqlListener.prototype.exitConceptSelector = function(ctx) {
+  ctx.__type = System.Concept
 };
 cqlListener.prototype.enterLiteral = function(ctx) {
 };
 cqlListener.prototype.exitLiteral = function(ctx) {
+  ctx.__type = ctx.children[0].__type
 };
 cqlListener.prototype.enterNullLiteral = function(ctx) {
 };
 cqlListener.prototype.exitNullLiteral = function(ctx) {
+   ctx.__type = System.NULL 
 };
 cqlListener.prototype.enterBooleanLiteral = function(ctx) {
 };
 cqlListener.prototype.exitBooleanLiteral = function(ctx) {
-};
+   ctx.__type = System.Boolean
+}
 cqlListener.prototype.enterStringLiteral = function(ctx) {
 };
 cqlListener.prototype.exitStringLiteral = function(ctx) {
+   ctx.__type = System.String
 };
 cqlListener.prototype.enterDateTimeLiteral = function(ctx) {
 };
 cqlListener.prototype.exitDateTimeLiteral = function(ctx) {
+   ctx.__type = System.DateTime
 };
 cqlListener.prototype.enterTimeLiteral = function(ctx) {
 };
 cqlListener.prototype.exitTimeLiteral = function(ctx) {
+  ctx.__type = System.Time 
 };
 cqlListener.prototype.enterQuantityLiteral = function(ctx) {
 };
 cqlListener.prototype.exitQuantityLiteral = function(ctx) {
+  ctx.type = System.QuantityLiteral 
 };
 cqlListener.prototype.enterUnit = function(ctx) {
 };
 cqlListener.prototype.exitUnit = function(ctx) {
+  ctx.__type = System.String;
 };
 cqlListener.prototype.enterIdentifier = function(ctx) {
 };
 cqlListener.prototype.exitIdentifier = function(ctx) {
+  var id = ctx.QUOTEDIDENTIFIER() || ctx.IDENTIFIER();
+  ctx.__identifier = id.toString();
 };
 
 
@@ -19983,6 +21493,8 @@ window.addEventListener = function() {};
 var Worker = exports.Worker = function(sender) {
     Mirror.call(this, sender);
     this.errorListener = new AceErrorListener()
+    this.models = [];
+    this.includes = [];
     this.setTimeout(250);
 };
 
@@ -19991,25 +21503,36 @@ oop.inherits(Worker, Mirror);
 (function() {
 
     this.onUpdate = function() {
+        var modelRegex = new RegExp(/using [^\S\n\r]*([_a-zA-Z][_a-zA-Z0-9]*)/g)
+        var includeRegex = new RegExp(/include [^\S\n\r]*([_a-zA-Z][_a-zA-Z0-9]*)/g)
         var value = this.doc.getValue();
+        var models = [];
+        var includes = []
+        var match = null
+        while((match = modelRegex.exec(value))){
+            models.push(match[1])
+        }
+       match = null ;
+       while((match = includeRegex.exec(value))){
+            if(match[1] ){
+             includes.push(match[1])
+             }
+        }
         var errors = [];
         var chars = new InputStream(value);
         var lexer = new cqlLexer(chars);
         var tokens  = new CommonTokenStream(lexer);
         var parser = new cqlParser(tokens);
         var listener = new cqlListener();
-        parser.addParseListener(listener);
         parser.addErrorListener(this.errorListener);
         parser.buildParseTrees = true;
         this.errorListener.reset();
         var tree = parser.logic();
-        this.sender.emit("updateCqlModel", listener.toModel());
-        if(! (value.replace(/\n/g, '').trim() == '') ){
-            this.sender.emit("annotate", this.errorListener.errors);
-        }else{
-            this.sender.emit("annotate", []);
-        }
-    }
+        this.sender.emit("annotate", this.errorListener.errors);
+        console.log("models "+models)
+        if(models.length >0) this.sender.emit("loadModels", models)
+        if(includes.length >0) this.sender.emit("loadIncludes", includes)
+    };
 
 }).call(Worker.prototype);
 

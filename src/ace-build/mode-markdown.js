@@ -680,8 +680,8 @@ var CstyleBehaviour = function() {
                 if (leftChar == "\\" && token && /escape/.test(token.type))
                     return null;
                 
-                var stringBefore = token && /string/.test(token.type);
-                var stringAfter = !rightToken || /string/.test(rightToken.type);
+                var stringBefore = token && /string|escape/.test(token.type);
+                var stringAfter = !rightToken || /string|escape/.test(rightToken.type);
                 
                 var pair;
                 if (rightChar == quote) {
@@ -1665,7 +1665,7 @@ oop.inherits(Mode, TextMode);
 
     this.blockComment = {start: "<!--", end: "-->"};
 
-     this.createWorker = function(session) {
+    this.createWorker = function(session) {
         var worker = new WorkerClient(["ace"], "ace/mode/xml_worker", "Worker");
         worker.attachToDocument(session.getDocument());
 
@@ -2584,6 +2584,7 @@ var MarkdownHighlightRules = function() {
         }],
         "allowBlock": [
             {token : "support.function", regex : "^ {4}.+", next : "allowBlock"},
+            {token : "empty_line", regex : '^$', next: "allowBlock"},
             {token : "empty", regex : "", next : "start"}
         ],
 

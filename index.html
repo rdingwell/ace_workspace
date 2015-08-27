@@ -23,8 +23,10 @@
           waitSeconds: 30
       };
       $(document).ready(function() {
+
         $("#addTab").click(function(){
-          workspace.open("","",AceWorkspaceEditor,{ace:window.ace})
+          //require("ace/ext/language_tools");
+          workspace.open("","",AceWorkspaceEditor,{ace:window.ace,mode:"ace/mode/cql"})
           })
        }
       );
@@ -33,10 +35,12 @@
   <!-- ACE WORKSPACE -->
   <script src="bower_components/requirejs/require.js"></script>
   <script src="src/ace-build/ace.js"></script>
+  <script src="src/ace-build/ext-language_tools.js"></script>
   <script src="src/ace-build/ext-settings_menu.js"></script>
   <script src="src/ace-build/ext-textarea.js"></script>
   <script src="src/ace-build/ext-statusbar.js"></script>
   <script src="src/workspace.js"></script>
+   <script src="src/repository.js"></script>
   <script src="src/ace-workspace-editor.js"></script>
 
  <!-- BOWER COMPONETS -->

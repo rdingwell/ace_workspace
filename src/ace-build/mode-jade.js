@@ -942,6 +942,7 @@ var MarkdownHighlightRules = function() {
         }],
         "allowBlock": [
             {token : "support.function", regex : "^ {4}.+", next : "allowBlock"},
+            {token : "empty_line", regex : '^$', next: "allowBlock"},
             {token : "empty", regex : "", next : "start"}
         ],
 
@@ -1477,7 +1478,7 @@ var LessHighlightRules = function() {
                 regex: "\\.[a-z0-9-_]+"
             }, {
                 token: "variable.language",
-                regex: ":[a-z0-9-_]+"
+                regex: ":[a-z_][a-z0-9-_]*"
             }, {
                 token: "constant",
                 regex: "[a-z0-9-_]+"

@@ -8,7 +8,7 @@ function AceWorkspaceEditor(workspace, name , content ,options){
   this.$workspace = workspace;
   //this.$id = id;
   this.$tab = null;
-  this.$contentElement = null; 
+  this.$contentElement = null;
   this.$aceEditor = null;
   this.$aceSession = null;
   this.$ace = options.ace || window.ace;
@@ -20,10 +20,10 @@ AceWorkspaceEditor.prototype._initializeView = function(div){
   this.$aceEditor.setTheme(this.options.theme);
   this.$aceEditor.getSession().setMode(this.options.mode);
   this.$aceEditor.setOptions({
-    "enableBasicAutocompletion": true,
-    "enableLiveAutocompletion": true,
-    "enableSnippets": true
-  });
+        enableBasicAutocompletion: true,
+        enableSnippets: true,
+        enableLiveAutocompletion: false
+    });
  this.$aceEditor.setValue(this.$originalContent);
 }
 
@@ -38,7 +38,8 @@ AceWorkspaceEditor.prototype.isDirty = function(){
  return this.$aceEditor.getValue() != this.$originalContent;
 }
 AceWorkspaceEditor.prototype.save = function(params){
-  this.$workspace.save(this, params)
+  var self = this;
+  this.$workspace.save(this, {success: self.updateOriginalContent})
 }
 
 AceWorkspaceEditor.prototype.close = function(params){
@@ -47,7 +48,7 @@ AceWorkspaceEditor.prototype.close = function(params){
 
 AceWorkspaceEditor.prototype._close = function(){
   this.$aceEditor.destroy();
-  var panelId =$tab.remove().attr( "aria-controls" );
+  var panelId = this.$tab.remove().attr( "aria-controls" );
   $( "#" + panelId ).remove();
 
 }
@@ -77,10 +78,14 @@ AceWorkspaceEditor.prototype.getName = function(){
 }
 
 AceWorkspaceEditor.prototype.getContent = function(){
-    this.$aceEditor.getValue()
+  return this.$aceEditor.getValue()
+}
+
+
+AceWorkspaceEditor.prototype.updateOriginalContent = function(){
+  return this.$originalContent = this.getContent()
 }
 
 AceWorkspaceEditor.prototype.getWorkspace = function(){
   return $(this.$workspace);
 }
-

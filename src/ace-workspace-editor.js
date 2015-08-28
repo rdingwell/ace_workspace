@@ -19,6 +19,7 @@ AceWorkspaceEditor.prototype._initializeView = function(div){
   this.$aceEditor = this.$ace.edit(this.$contentDiv[0]);
   this.$aceEditor.setTheme(this.options.theme);
   this.$aceEditor.getSession().setMode(this.options.mode);
+  this.$aceSession = this.$aceEditor.getSession()
   this.$aceEditor.setOptions({
         enableBasicAutocompletion: true,
         enableSnippets: true,

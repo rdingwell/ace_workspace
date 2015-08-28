@@ -15,13 +15,7 @@
 	<script src="bower_components/jquery/dist/jquery.js"></script>
 	<script src="bower_components/jquery-ui/jquery-ui.js"></script>
 	<script type="text/javascript">
-      var require = {
-          baseUrl: window.location.protocol + "//" + window.location.host + window.location.pathname.split("/").slice(0, -1).join("/"),
-          paths: {
-              ace: "bower_components/ace/lib/ace"
-          },
-          waitSeconds: 30
-      };
+
       $(document).ready(function() {
 
         $("#addTab").click(function(){
@@ -52,17 +46,75 @@
 	<script>
 	$(function() {
      	$( "#workspace" ).workspace();
-	 	workspace = $( "#workspace" ).workspace("instance");
+	 	  workspace = $( "#workspace" ).workspace("instance");
 	});
 	</script>
 	<script>
+
+
+    var menuCommands = {}
+    menuCommands["new"] = function(){
+        workspace.open("","",AceWorkspaceEditor,{ace:window.ace,mode:"ace/mode/cql"})
+    }
+
+    menuCommands["close"] = function(){
+       var active =  workspace.activeEditor();
+       if(active){
+        active.close();
+       }
+    }
+
+    menuCommands["closeAll"] = function(){
+       workspace.closeAll();
+    }
+
+    menuCommands["closeOthers"] = function(){
+       var active =  workspace.activeEditor();
+       if(active){
+         workspace.closeOthers(active)
+       }
+    }
+
+    menuCommands["print"] = function(){
+      var active =  workspace.activeEditor();
+      if(active){
+        var editor = active.$aceEditor
+        require("ace/config").loadModule("ace/ext/static_highlight", function(m) {
+        var result = m.renderSync(
+            editor.getValue(), editor.session.getMode(), editor.renderer.theme
+        )
+        document.body.style.display="none"
+        var d = document.createElement("div")
+        d.innerHTML=result.html
+        document.documentElement.appendChild(d)
+        require("ace/lib/dom").importCssString(result.css)
+
+        setTimeout(function() {window.print()}, 10)
+
+        window.addEventListener("focus", function restore() {
+           window.removeEventListener("focus", restore, false)
+          d.parentNode.removeChild(d)
+          document.body.style.display= ""
+          editor.resize(true)
+        }, false)
+       })
+      }
+  }
+
+
 		$(function() {
 			$( "#menu" ).menu({
-		position: {
-			my:'left+10 bottom-15',
-			at:'left center'
-			}
-		});    
+		    position: {
+		    	my:'left+10 bottom-15',
+		    	at:'left center'
+			   },
+        select: function(event,ui){
+          var command = menuCommands[ui.item[0].id]
+          if(command){
+            command();
+          }
+        }
+		  });    
   	});
 	</script>
 	
@@ -78,47 +130,51 @@
 		<ul id="menu">
 			<li>File
 			<ul>
-			<li class="ui-state-disabled">File Sub Menu 1</li>
-			<li>File Sub Menu 2</li>
-			<div class="ui-menu-divider"></div>
-			<li><span class="ui-icon ui-icon-star"></span>File Sub Menu 3</li>
-    		</ul>	
-			</li>
-			<li>Edit
-			<ul>
-			<li class="ui-state-disabled">Edit Sub Menu 1</li>
-			<li>Edit Sub Menu 2</li>
-			<li>Edit Sub Menu 3</li>
+			   <li id="new">New</li>
+			   <li id="close">Close</li>
+         <li id="closeAll">Close All</li>
+         <li id="closeOthers">Close Others</li>
+			   <div class="ui-menu-divider"></div>
+			   <li id="print">Print</li>
+    	 </ul>	
+		  </li>
+			
+      <li>Edit
+		  	<ul>
+			   <li class="ui-state-disabled">Edit Sub Menu 1</li>
+			   <li>Edit Sub Menu 2</li>
+			   <li>Edit Sub Menu 3</li>
     		</ul>	
 			</li>
 			<li>Find
-			<ul>
-			<li>Find Sub Menu 1</li>
-			<li>Find Sub Menu 2</li>
-			<li>Find Sub Menu 3</li>
+			   <ul>
+			     <li>Find Sub Menu 1</li>
+			     <li>Find Sub Menu 2</li>
+			     <li>Find Sub Menu 3</li>
     		</ul>
 			</li>
 			<li>View
-			<ul>
-			<li class="ui-state-disabled">View Sub Menu 1</li>
-			<li>View Sub Menu 2</li>
-			<li>View Sub Menu 3</li>
+		    <ul>
+			     <li class="ui-state-disabled">View Sub Menu 1</li>
+			     <li>View Sub Menu 2</li>
+			     <li>View Sub Menu 3</li>
     		</ul>
 			</li>
 			<li>Preferences
-			<ul>
-				<li class="ui-state-disabled">Pref Menu Item 1</li>
-				<li>Pref Menu Item 2</li>
-				<li>Pref Menu Item 3</li>
+			   <ul>
+				    <li class="ui-state-disabled">Pref Menu Item 1</li>
+				    <li>Pref Menu Item 2</li>
+				    <li>Pref Menu Item 3</li>
 	    	</ul>
 			</li>
 			<li>Help
-			<ul>
-				<li class="ui-state-disabled">Pref Menu Item 1</li>
-				<li ><span class="ui-icon ui-icon-print"></span>Pref Menu Item 2</li>
-				<li>Pref Menu Item 3</li>
-	    	</ul>
+			   <ul>
+				    <li class="ui-state-disabled">Pref Menu Item 1</li>
+				    <li ><span class="ui-icon ui-icon-print"></span>Pref Menu Item 2</li>
+				    <li>Pref Menu Item 3</li>
+	    	  </ul>
 			</li>
+     </ul>
 		</div>
 	<div class="login">ehathaway@mitre.org</div>
 	
@@ -127,7 +183,6 @@
 
 <div class="actionBar">
 	<input id="mybutton" type="button" value="Slide" class="ui-state-default ui-corner-all ui-button-icon-only">
-	<button id="addTab" class="icon">Add Tab</button>
 </div>
 
 

@@ -79,12 +79,10 @@ function Tab(li){
       // In jQuery UI 1.9 and above, you would define _destroy instead of destroy and not call the base method
     },
     activeEditor: function(){
-      var activeTab = this.tabs.data().uiTabs.active
-      $.each(this.editors,function(index,editor){
-        if(editor.$tab == activeTab){
-          return editor;
-        }
-      });
+      var tabsInstance = this.tabs.tabs("instance");
+      if(tabsInstance && tabsInstance.active[0]){
+        return tabsInstance.active.data().editor
+      }
     },
     closeAll: function(){
       var arr = this.editors.slice()
@@ -113,6 +111,7 @@ function Tab(li){
     },
     confirmSave: function(editor,params) {
       var self = this;
+      var tabs = this.tabs 
       var myDialog = $('<div></div>')
           .html('Do you want to save the changes you made to '+editor.getName()+' ?')
           .dialog({
@@ -127,6 +126,7 @@ function Tab(li){
             "Don't Save": function () {
               editor._close();
               $(this).dialog("close");
+              tabs.tabs("refresh")
               return false;
             },
             "Cancel": function () {

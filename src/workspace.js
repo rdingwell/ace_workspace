@@ -28,7 +28,7 @@ function Tab(li){
           }});
       this.tabTemplate = "<li><a class='workspace-tab' href='#{href}'>#{label}</a><span class='ui-icon ui-icon-close' role='presentation'>Remove Tab</span></li>",
       this.tabCounter = 0;
-      this.delegate = new Repository("http://localhost:3000/api/documents");
+      //this.delegate = new Repository("http://localhost:3000/api/documents");
       //this.delegate = options.delegate
 
      // close icon: removing the tab on click
@@ -107,7 +107,9 @@ function Tab(li){
       }
       if(cls){
         this.unregisterEditor(editor)
-        editor._close()}
+        editor._close()
+        this.tabs.tabs( "refresh");
+       }
     },
     confirmSave: function(editor,params) {
       var self = this;
@@ -146,6 +148,7 @@ function Tab(li){
       var index = this.editors.indexOf(editor)
       if(index >= 0){
         this.editors.splice(index,1)
+        return index;
       }
     },
     closeEditor: function(editor){

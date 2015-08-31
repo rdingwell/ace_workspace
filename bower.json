@@ -7,7 +7,8 @@
         "jquery": "*",
         "jquery-ui" : "*",
         "requirejs" : "*",
-        "bootstrap" : "*"
+        "bootstrap" : "*",
+        "jstree" : "*"
     },
     "main": "ace-workspace.main.js"
 }

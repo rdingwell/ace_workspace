@@ -9262,9 +9262,9 @@ define("ace/mode/cql/model",["require","exports","module","ace/config"], functio
     return this._baseType
   };
   ModelType.prototype.resolve = function(prop) {
-    var prop = this.properties[prop];
-    if(!prop && this.getBaseType() ){prop = this.getBaseType().resolve(prop)}
-    return prop ? this.model.resolve(prop.type) : null
+    var property = this.properties[prop];
+    if(!property && this.getBaseType() ){property = this.getBaseType().resolve(prop)}
+    return property ? this.model.resolve(property.type) : null
   };
   
   ModelType.prototype.propertyNames = function() {
@@ -9495,12 +9495,7 @@ cqlListener.prototype.enterLogic = function(ctx) {
   console.log("start logic")
 };
 cqlListener.prototype.exitLogic = function(ctx) {
-  if(this.models[0]){
-    var ptype = this.models[0].patientClassName
-    if(ptype){
-      this.currentContext.set("Patient", this.models[0].resolve(ptype))
-    }
-  }
+ 
 };
 cqlListener.prototype.enterLibraryDefinition = function(ctx) {
 };
@@ -9514,6 +9509,12 @@ cqlListener.prototype.exitUsingDefinition = function(ctx) {
    ModelManager.loadModel(mid)
    this.models.push(ModelManager.getModel(mid));
    this.currentContext.set(ctx.identifier().getText(), ModelManager.getModel(mid))
+   if(this.models[0]){
+    var ptype = this.models[0].patientClassName
+    if(ptype){
+      this.currentContext.set("Patient", this.models[0].resolve(ptype))
+    }
+  }
 };
 cqlListener.prototype.enterIncludeDefinition = function(ctx) {
  
@@ -9899,7 +9900,7 @@ cqlListener.prototype.enterTypeExpression = function(ctx) {
 };
 cqlListener.prototype.exitTypeExpression = function(ctx) {
   if(ctx.children[1].getText() == "is"){
-    ctx.__type = Syastem.Boolean
+    ctx.__type = System.Boolean
   }else{
     ctx.__type = ctx.typeSpecifier().__type
   }
@@ -20949,7 +20950,10 @@ define("ace/mode/cql/model_completer",["require","exports","module","ace/mode/cq
         var antlrCtx = rule.ruleContext ;
         var context = rule.context; 
         var type = (antlrCtx.__type ) ? antlrCtx.__type : antlrCtx.parentCtx.__type
-        if(accessor){
+        if(!type && antlrCtx.parentCtx.expressionTerm){
+          type = antlrCtx.parentCtx.expressionTerm().__type
+        }
+        if(accessor || !spaceAtEnd){
           if(type){
              callback(null, type.propertyNames().map(function(t){
                 return {name: t, value: t, score: 10000, meta: type.type}

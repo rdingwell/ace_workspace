@@ -21520,6 +21520,7 @@ oop.inherits(Worker, Mirror);
              }
         }
         var errors = [];
+        if(value.trim() == "" ){return}
         var chars = new InputStream(value);
         var lexer = new cqlLexer(chars);
         var tokens  = new CommonTokenStream(lexer);

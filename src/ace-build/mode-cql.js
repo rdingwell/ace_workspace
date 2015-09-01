@@ -21159,6 +21159,9 @@ define("ace/mode/cql/model_completer",["require","exports","module","ace/mode/cq
 
   var cqlModelCompleter = {
     getCompletions: function(editor, session, pos, prefix, callback) {
+      if(session.getDocument().getValue().trim() == ""){
+        return
+      }
       modelCompletions.getCompletions(editor, session, pos, prefix, callback)
       valuesetCompletions.getCompletions(editor, session, pos, prefix, callback)
 

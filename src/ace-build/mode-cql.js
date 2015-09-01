@@ -20879,6 +20879,7 @@ define("ace/mode/cql/model_completer",["require","exports","module","ace/mode/cq
       steps++;
     }
     var tok = this.getCurrentToken()
+    if(!tok ){return steps}
     while(tok.type == "text"){
        (forward)?this.stepForward() : this.stepBackward();
        tok = this.getCurrentToken()
@@ -21036,6 +21037,7 @@ define("ace/mode/cql/model_completer",["require","exports","module","ace/mode/cq
         var initialToken = tokenizer.getCurrentToken();
         tokenizer.eatTextTokens(false,false)
         var token = tokenizer.getCurrentToken()
+        if(!token ){return false}
         var hasDot = false
         var model = null;
         if(token.type == "keyword.operator" && token.value=="."){
@@ -21090,6 +21092,7 @@ define("ace/mode/cql/model_completer",["require","exports","module","ace/mode/cq
         var initialToken = tokenizer.getCurrentToken();
         tokenizer.eatTextTokens(false,false)
         var token = tokenizer.getCurrentToken()
+        if(!token ){return false}
         var model = null;
        if(token.type == "identifier" && tokenizer.peekBackward(1).type=="retrieve.start" 
                                      && tokenizer.peekBackward(2).value!=")" && tokenizer.peekBackward(2).type!="identifier"){
@@ -21167,9 +21170,11 @@ define("ace/mode/cql/model_completer",["require","exports","module","ace/mode/cq
 
       var aceToken = session.getTokenAt(pos.row,pos.column)
       if(!aceToken) {return}
-      if(retrieveCompleter.getCompletions(editor, session, pos, prefix, callback)){
-        return
-      }
+      try{
+        if(retrieveCompleter.getCompletions(editor, session, pos, prefix, callback)){
+          return
+        }
+      }catch(e){console.log(e)}
 
       parseCompleter.getCompletions(editor, session, pos, prefix, callback)
     }

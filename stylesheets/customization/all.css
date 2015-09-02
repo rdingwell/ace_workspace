@@ -2,33 +2,44 @@
   background: #EAF0FA;
   color: white;
   height: 40px;
-  position: relative; }
+  position: relative;
+  display: table;
+  width: 100%; }
   #header .logo {
     width: 62px;
     height: 28px;
     padding: 6px 0 0 8px;
-    float: left; }
+    float: left;
+    display: table-cell; }
   #header .menuContainer {
     float: left;
     border-left: 1px solid #8E9FBC;
     margin-left: 8px;
     padding-right: 24px;
-    padding-left: 12px; }
+    padding-left: 12px;
+    display: table-cell; }
   #header .login {
     float: right;
     background: #8E9FBC;
     font-family: 'roboto';
     font-size: 12px;
     width: 211px;
-    height: 40px;
-    padding: 10px 0 0 10px; }
+    height: 30px;
+    padding: 10px 0 0 10px;
+    display: table-cell; }
 
 .actionBar {
   background: #253247;
   height: 32px;
-  margin-bottom: 4px;
-  padding-left: 10px;
-  padding-top: 2px; }
+  padding-top: 2px;
+  float: left;
+  width: inherit; }
+  .actionBar .ui-icon {
+    width: 18px;
+    height: 18px;
+    display: inline-block;
+    margin-top: 4px;
+    background-image: url("images/ui-icons_2e83ff_256x240.png"); }
 
 .ui-menu {
   font-family: 'roboto';
@@ -70,13 +81,14 @@
   border: none; }
   #menu ul {
     height: auto;
-    padding-bottom: 12px;
+    padding-bottom: 0px;
     background: #EAF0FA; }
   #menu ul li {
     width: 150px;
     height: 24px;
     padding-left: 20px;
-    background: #EAF0FA; }
+    background: #EAF0FA;
+    padding-bottom: 0; }
 
 .workspace-tabs {
   height: 33px; }
@@ -85,11 +97,38 @@
   position: relative;
   /* position: relative prevents IE scroll bug (element with position: relative inside container with overflow: auto appear as "fixed") */
   font: "roboto";
-  font-size: 12px; }
+  font-size: 12px;
+  padding: 0px; }
 
 .treepanel {
   width: 250px;
   float: left;
   background: #253247;
-  float: left;
-  border-right: 1px solid #EAF0FA; }
+  border-right: 2px solid #EAF0FA; }
+
+body {
+  margin: 0px; }
+
+/**
+@media (min-width: 768px) {
+  .ace-container {
+    width: auto;
+  }
+}
+@media (min-width: 992px) {
+  .ace-container {
+    width: auto;
+  }
+}
+@media (min-width: 1200px) {
+  .ace-container {
+    width: auto;
+  }
+}
+**/
+#footer {
+  background-color: #041227;
+  color: white;
+  clear: both;
+  text-align: center;
+  padding: 5px; }

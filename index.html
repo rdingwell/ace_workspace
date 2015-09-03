@@ -8,7 +8,6 @@
 	
 
 	<link rel="stylesheet" type="text/css" href="stylesheets/jquery-ui-theme.css">
-	<link rel="stylesheet" href="bower_components/bootstrap/dist/css/bootstrap.css"/>
 	<link rel="stylesheet" href="stylesheets/ace-workspace.css"/>
 	<link rel="stylesheet" type="text/css" href="stylesheets/customization/all.css">
 
@@ -177,37 +176,34 @@
      </ul>
 		</div>
 	<div class="login">ehathaway@mitre.org</div>
-	
-
-</div>
 
 <div class="actionBar">
 	<input id="mybutton" type="button" value="Slide" class="ui-state-default ui-corner-all ui-button-icon-only">
 </div>
-
-
-
 <!-- END HEADER -->
 
-  <div class="ace-container" >
-	<!-- START TREE PANEL -->	
-<div id="panel" class="treepanel ui-widget-content">
+<div class="ace-container" >
+
+<!-- START TREE PANEL -->	
+<div id="panel" class="treepanel">
 add tree selector
 </div>
 <!-- END TREE PANEL -->
 
 
-
 <!-- START CONTENT AREA -->
 
 
-   <div class="row">
-   	   
-	<div id="workspace" ></div>
+<div class="ace">
+   	 <div class="actionBar">
+	<input id="mybutton" type="button" value="Slide" class="ui-state-default ui-corner-all ui-button-icon-only ui-icon  ui-icon-arrowthickstop-1-w" style="cursor: pointer">
+	<button id="addTab" class="icon">Add Tab</button>
+	</div>
+
+	<div id="workspace"></div>
   </div>  
 
-</div>
-	
+  </div>	
 	
 
 
@@ -220,10 +216,9 @@ jQuery(function () {
     });
 })
 </script>	
-<!--
-<div id="footer" style="position: fixed">
-Copyright © W3Schools.com
-</div>-->
+<div id="footer" class="ui-widget-content">
+status bar
+</div>
 </div>
 </BODY>
 </HTML>

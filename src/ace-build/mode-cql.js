@@ -9348,7 +9348,7 @@ define("ace/mode/cql/model_manager",["require","exports","module","ace/config","
   }
 
   exports.ModelManager = ModelManager
-  exports.ModelManagerInstance = new ModelManager(new ModelRetriever("./models/"));
+  exports.ModelManagerInstance = new ModelManager(new ModelRetriever("/models/"));
 });
 
 define("ace/mode/cql/parse_context",["require","exports","module"], function(require, exports, module) {
@@ -20805,8 +20805,9 @@ var Editor = require("./editor").Editor;
 
 });
 
-define("ace/mode/cql/model_completer",["require","exports","module","ace/mode/cql/model_manager","ace/snippets","ace/mode/cql/cqlLexer","ace/mode/cql/cqlParser","ace/mode/cql/cqlListener","ace/mode/cql/antlr4/InputStream","ace/mode/cql/antlr4/CommonTokenStream","ace/token_iterator"], function(require, exports, module) {
+define("ace/mode/cql/model_completer",["require","exports","module","ace/range","ace/mode/cql/model_manager","ace/snippets","ace/mode/cql/cqlLexer","ace/mode/cql/cqlParser","ace/mode/cql/cqlListener","ace/mode/cql/antlr4/InputStream","ace/mode/cql/antlr4/CommonTokenStream","ace/token_iterator"], function(require, exports, module) {
 "use strict";
+  var Range = require("../../range").Range
   var ModelManager = require('./model_manager').ModelManagerInstance;
   var snippetManager = require("../../snippets").snippetManager;
   var cqlLexer = require("./cqlLexer").cqlLexer;
@@ -20910,7 +20911,29 @@ define("ace/mode/cql/model_completer",["require","exports","module","ace/mode/cq
     return tokens;
   }
 
-
+  var quotedIndentifierInserter = function(aceToken, pos){
+     this.token = aceToken;
+     this.insertMatch = function(editor,data){
+      var v = data.value || data 
+      if(v[0] != '"'){
+        v = "\""+v
+      }
+      if(v[v.length-1] != ['"']){
+        v = v+ "\""
+      }
+      var range = editor.getSelection().getRange()
+      if(this.token.value[this.token.value.length-1] != '"'){
+        var tokenRange = new Range(pos.row, aceToken.start, pos.row,  pos.column)
+        editor.session.remove(tokenRange);
+        editor.execCommand("insertstring",v);
+      }
+     else{
+        var tokenRange = new Range(pos.row, aceToken.start, pos.row,  aceToken.start + aceToken.value.length)
+        editor.session.remove(tokenRange);
+        editor.execCommand("insertstring",v);
+      }
+     }
+  }
 
   var parseCompleter = {
     getCompletions: function(editor, session, pos, prefix, callback) {
@@ -20933,7 +20956,10 @@ define("ace/mode/cql/model_completer",["require","exports","module","ace/mode/cq
         position--;
         spaceAtEnd = true;
       }
-
+      var inserter = null;
+      if(aceToken.type == "quotedIdentifier"){
+        inserter = new quotedIndentifierInserter(aceToken,pos);
+      }
       var chars = new InputStream(dVal);
       var lexer = new cqlLexer(chars);
       var tokens  = new CommonTokenStream(lexer);
@@ -20950,19 +20976,32 @@ define("ace/mode/cql/model_completer",["require","exports","module","ace/mode/cq
       if(rule ){
         var antlrCtx = rule.ruleContext ;
         var context = rule.context; 
-        var type = (antlrCtx.__type ) ? antlrCtx.__type : antlrCtx.parentCtx.__type
-        if(!type && antlrCtx.parentCtx.expressionTerm){
-          type = antlrCtx.parentCtx.expressionTerm().__type
+
+        var type = antlrCtx.__type 
+        if(!type && antlrCtx.parentCtx){
+          type = antlrCtx.parentCtx.__type
+          if(!type && antlrCtx.parentCtx.expressionTerm){
+            type = antlrCtx.parentCtx.expressionTerm().__type
+          }
         }
+        
         if(accessor || !spaceAtEnd){
-          if(type){
+          if(type && type.propertyNames && type.propertyNames()){
+
              callback(null, type.propertyNames().map(function(t){
-                return {name: t, value: t, score: 10000, meta: type.type}
+                return {name: t, value: t, score: 10000, meta: type.type, completer: inserter}
             }));
            }else{
            }
         }else if(spaceAtEnd){
         }
+
+        var contextVars = context.getVaribleHierarchy().map(function(cv){
+                if(cv.type && cv.type.type)
+                 return {name: cv.id, value: cv.id, score: 1000, meta: cv.type.type, completer: inserter}
+            }).filter(function(n){return n})
+
+        callback(null, contextVars);
         if(completions.length > 0){
 
         }

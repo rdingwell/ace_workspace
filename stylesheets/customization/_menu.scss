@@ -55,11 +55,13 @@ $menu-background: #EAF0FA;
 	background: $menu-background;
 	border: none;
 
+
 	
 	ul {
 		height: auto;
-		padding-bottom: 12px;
+		padding-bottom: 0px;
 		background: $menu-background;
+
 		
 	}
 	
@@ -68,6 +70,9 @@ $menu-background: #EAF0FA;
 		height: 24px;
 		padding-left: 20px;
 		background: $menu-background;
+		padding-bottom: 0;
+
+
 
 	}
 

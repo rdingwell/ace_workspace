@@ -10886,7 +10886,7 @@ define("ace/mode/cql/model_manager",["require","exports","module","ace/config","
   }
 
   exports.ModelManager = ModelManager
-  exports.ModelManagerInstance = new ModelManager(new ModelRetriever("./models/"));
+  exports.ModelManagerInstance = new ModelManager(new ModelRetriever("/models/"));
 });
 
 define("ace/token_iterator",["require","exports","module"], function(require, exports, module) {

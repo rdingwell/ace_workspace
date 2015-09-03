@@ -9262,9 +9262,9 @@ define("ace/mode/cql/model",["require","exports","module","ace/config"], functio
     return this._baseType
   };
   ModelType.prototype.resolve = function(prop) {
-    var prop = this.properties[prop];
-    if(!prop && this.getBaseType() ){prop = this.getBaseType().resolve(prop)}
-    return prop ? this.model.resolve(prop.type) : null
+    var property = this.properties[prop];
+    if(!property && this.getBaseType() ){property = this.getBaseType().resolve(prop)}
+    return property ? this.model.resolve(property.type) : null
   };
   
   ModelType.prototype.propertyNames = function() {
@@ -9348,7 +9348,7 @@ define("ace/mode/cql/model_manager",["require","exports","module","ace/config","
   }
 
   exports.ModelManager = ModelManager
-  exports.ModelManagerInstance = new ModelManager(new ModelRetriever("./models/"));
+  exports.ModelManagerInstance = new ModelManager(new ModelRetriever("/models/"));
 });
 
 define("ace/mode/cql/parse_context",["require","exports","module"], function(require, exports, module) {
@@ -9495,12 +9495,7 @@ cqlListener.prototype.enterLogic = function(ctx) {
   console.log("start logic")
 };
 cqlListener.prototype.exitLogic = function(ctx) {
-  if(this.models[0]){
-    var ptype = this.models[0].patientClassName
-    if(ptype){
-      this.currentContext.set("Patient", this.models[0].resolve(ptype))
-    }
-  }
+ 
 };
 cqlListener.prototype.enterLibraryDefinition = function(ctx) {
 };
@@ -9514,6 +9509,12 @@ cqlListener.prototype.exitUsingDefinition = function(ctx) {
    ModelManager.loadModel(mid)
    this.models.push(ModelManager.getModel(mid));
    this.currentContext.set(ctx.identifier().getText(), ModelManager.getModel(mid))
+   if(this.models[0]){
+    var ptype = this.models[0].patientClassName
+    if(ptype){
+      this.currentContext.set("Patient", this.models[0].resolve(ptype))
+    }
+  }
 };
 cqlListener.prototype.enterIncludeDefinition = function(ctx) {
  
@@ -9899,7 +9900,7 @@ cqlListener.prototype.enterTypeExpression = function(ctx) {
 };
 cqlListener.prototype.exitTypeExpression = function(ctx) {
   if(ctx.children[1].getText() == "is"){
-    ctx.__type = Syastem.Boolean
+    ctx.__type = System.Boolean
   }else{
     ctx.__type = ctx.typeSpecifier().__type
   }
@@ -20804,8 +20805,9 @@ var Editor = require("./editor").Editor;
 
 });
 
-define("ace/mode/cql/model_completer",["require","exports","module","ace/mode/cql/model_manager","ace/snippets","ace/mode/cql/cqlLexer","ace/mode/cql/cqlParser","ace/mode/cql/cqlListener","ace/mode/cql/antlr4/InputStream","ace/mode/cql/antlr4/CommonTokenStream","ace/token_iterator"], function(require, exports, module) {
+define("ace/mode/cql/model_completer",["require","exports","module","ace/range","ace/mode/cql/model_manager","ace/snippets","ace/mode/cql/cqlLexer","ace/mode/cql/cqlParser","ace/mode/cql/cqlListener","ace/mode/cql/antlr4/InputStream","ace/mode/cql/antlr4/CommonTokenStream","ace/token_iterator"], function(require, exports, module) {
 "use strict";
+  var Range = require("../../range").Range
   var ModelManager = require('./model_manager').ModelManagerInstance;
   var snippetManager = require("../../snippets").snippetManager;
   var cqlLexer = require("./cqlLexer").cqlLexer;
@@ -20878,6 +20880,7 @@ define("ace/mode/cql/model_completer",["require","exports","module","ace/mode/cq
       steps++;
     }
     var tok = this.getCurrentToken()
+    if(!tok ){return steps}
     while(tok.type == "text"){
        (forward)?this.stepForward() : this.stepBackward();
        tok = this.getCurrentToken()
@@ -20908,7 +20911,29 @@ define("ace/mode/cql/model_completer",["require","exports","module","ace/mode/cq
     return tokens;
   }
 
-
+  var quotedIndentifierInserter = function(aceToken, pos){
+     this.token = aceToken;
+     this.insertMatch = function(editor,data){
+      var v = data.value || data 
+      if(v[0] != '"'){
+        v = "\""+v
+      }
+      if(v[v.length-1] != ['"']){
+        v = v+ "\""
+      }
+      var range = editor.getSelection().getRange()
+      if(this.token.value[this.token.value.length-1] != '"'){
+        var tokenRange = new Range(pos.row, aceToken.start, pos.row,  pos.column)
+        editor.session.remove(tokenRange);
+        editor.execCommand("insertstring",v);
+      }
+     else{
+        var tokenRange = new Range(pos.row, aceToken.start, pos.row,  aceToken.start + aceToken.value.length)
+        editor.session.remove(tokenRange);
+        editor.execCommand("insertstring",v);
+      }
+     }
+  }
 
   var parseCompleter = {
     getCompletions: function(editor, session, pos, prefix, callback) {
@@ -20931,7 +20956,10 @@ define("ace/mode/cql/model_completer",["require","exports","module","ace/mode/cq
         position--;
         spaceAtEnd = true;
       }
-
+      var inserter = null;
+      if(aceToken.type == "quotedIdentifier"){
+        inserter = new quotedIndentifierInserter(aceToken,pos);
+      }
       var chars = new InputStream(dVal);
       var lexer = new cqlLexer(chars);
       var tokens  = new CommonTokenStream(lexer);
@@ -20948,16 +20976,30 @@ define("ace/mode/cql/model_completer",["require","exports","module","ace/mode/cq
       if(rule ){
         var antlrCtx = rule.ruleContext ;
         var context = rule.context; 
-        var type = (antlrCtx.__type ) ? antlrCtx.__type : antlrCtx.parentCtx.__type
-        if(accessor){
-          if(type){
+        var type = antlrCtx.__type 
+        if(!type && antlrCtx.parentCtx){
+          type = antlrCtx.parentCtx.__type
+          if(!type && antlrCtx.parentCtx.expressionTerm){
+            type = antlrCtx.parentCtx.expressionTerm().__type
+          }
+        }
+        
+        if(accessor || !spaceAtEnd){
+          if(type && type.propertyNames && type.propertyNames()){
              callback(null, type.propertyNames().map(function(t){
-                return {name: t, value: t, score: 10000, meta: type.type}
+                return {name: t, value: t, score: 10000, meta: type.type, completer: inserter}
             }));
            }else{
            }
         }else if(spaceAtEnd){
         }
+
+        var contextVars = context.getVaribleHierarchy().map(function(cv){
+                if(cv.type && cv.type.type)
+                 return {name: cv.id, value: cv.id, score: 1000, meta: cv.type.type, completer: inserter}
+            }).filter(function(n){return n})
+
+        callback(null, contextVars);
         if(completions.length > 0){
 
         }
@@ -21032,6 +21074,7 @@ define("ace/mode/cql/model_completer",["require","exports","module","ace/mode/cq
         var initialToken = tokenizer.getCurrentToken();
         tokenizer.eatTextTokens(false,false)
         var token = tokenizer.getCurrentToken()
+        if(!token ){return false}
         var hasDot = false
         var model = null;
         if(token.type == "keyword.operator" && token.value=="."){
@@ -21086,6 +21129,7 @@ define("ace/mode/cql/model_completer",["require","exports","module","ace/mode/cq
         var initialToken = tokenizer.getCurrentToken();
         tokenizer.eatTextTokens(false,false)
         var token = tokenizer.getCurrentToken()
+        if(!token ){return false}
         var model = null;
        if(token.type == "identifier" && tokenizer.peekBackward(1).type=="retrieve.start" 
                                      && tokenizer.peekBackward(2).value!=")" && tokenizer.peekBackward(2).type!="identifier"){
@@ -21155,14 +21199,19 @@ define("ace/mode/cql/model_completer",["require","exports","module","ace/mode/cq
 
   var cqlModelCompleter = {
     getCompletions: function(editor, session, pos, prefix, callback) {
+      if(session.getDocument().getValue().trim() == ""){
+        return
+      }
       modelCompletions.getCompletions(editor, session, pos, prefix, callback)
       valuesetCompletions.getCompletions(editor, session, pos, prefix, callback)
 
       var aceToken = session.getTokenAt(pos.row,pos.column)
       if(!aceToken) {return}
-      if(retrieveCompleter.getCompletions(editor, session, pos, prefix, callback)){
-        return
-      }
+      try{
+        if(retrieveCompleter.getCompletions(editor, session, pos, prefix, callback)){
+          return
+        }
+      }catch(e){console.log(e)}
 
       parseCompleter.getCompletions(editor, session, pos, prefix, callback)
     }

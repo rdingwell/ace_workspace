@@ -10800,9 +10800,9 @@ define("ace/mode/cql/model",["require","exports","module","ace/config"], functio
     return this._baseType
   };
   ModelType.prototype.resolve = function(prop) {
-    var prop = this.properties[prop];
-    if(!prop && this.getBaseType() ){prop = this.getBaseType().resolve(prop)}
-    return prop ? this.model.resolve(prop.type) : null
+    var property = this.properties[prop];
+    if(!property && this.getBaseType() ){property = this.getBaseType().resolve(prop)}
+    return property ? this.model.resolve(property.type) : null
   };
   
   ModelType.prototype.propertyNames = function() {
@@ -10886,7 +10886,7 @@ define("ace/mode/cql/model_manager",["require","exports","module","ace/config","
   }
 
   exports.ModelManager = ModelManager
-  exports.ModelManagerInstance = new ModelManager(new ModelRetriever("./models/"));
+  exports.ModelManagerInstance = new ModelManager(new ModelRetriever("/models/"));
 });
 
 define("ace/token_iterator",["require","exports","module"], function(require, exports, module) {
@@ -11166,12 +11166,7 @@ cqlListener.prototype.enterLogic = function(ctx) {
   console.log("start logic")
 };
 cqlListener.prototype.exitLogic = function(ctx) {
-  if(this.models[0]){
-    var ptype = this.models[0].patientClassName
-    if(ptype){
-      this.currentContext.set("Patient", this.models[0].resolve(ptype))
-    }
-  }
+ 
 };
 cqlListener.prototype.enterLibraryDefinition = function(ctx) {
 };
@@ -11185,6 +11180,12 @@ cqlListener.prototype.exitUsingDefinition = function(ctx) {
    ModelManager.loadModel(mid)
    this.models.push(ModelManager.getModel(mid));
    this.currentContext.set(ctx.identifier().getText(), ModelManager.getModel(mid))
+   if(this.models[0]){
+    var ptype = this.models[0].patientClassName
+    if(ptype){
+      this.currentContext.set("Patient", this.models[0].resolve(ptype))
+    }
+  }
 };
 cqlListener.prototype.enterIncludeDefinition = function(ctx) {
  
@@ -11570,7 +11571,7 @@ cqlListener.prototype.enterTypeExpression = function(ctx) {
 };
 cqlListener.prototype.exitTypeExpression = function(ctx) {
   if(ctx.children[1].getText() == "is"){
-    ctx.__type = Syastem.Boolean
+    ctx.__type = System.Boolean
   }else{
     ctx.__type = ctx.typeSpecifier().__type
   }
@@ -21519,6 +21520,10 @@ oop.inherits(Worker, Mirror);
              }
         }
         var errors = [];
+        if(value.trim() == "" ){
+          this.sender.emit("annotate", []);
+          return
+        }
         var chars = new InputStream(value);
         var lexer = new cqlLexer(chars);
         var tokens  = new CommonTokenStream(lexer);

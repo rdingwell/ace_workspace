@@ -2,19 +2,19 @@
 <!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
 <HTML>
 <HEAD>
-	<META http-equiv="content-type" content="text/html; charset=utf-8">
+  <META http-equiv="content-type" content="text/html; charset=utf-8">
 
-	<TITLE>Everest Editor</TITLE>
-	
+  <TITLE>Everest Editor</TITLE>
+  
 
-	<link rel="stylesheet" type="text/css" href="stylesheets/jquery-ui-theme.css">
-	<link rel="stylesheet" href="stylesheets/ace-workspace.css"/>
-	<link rel="stylesheet" type="text/css" href="stylesheets/customization/all.css">
+  <link rel="stylesheet" type="text/css" href="stylesheets/jquery-ui-theme.css">
+    <link rel="stylesheet" type="text/css" href="stylesheets/customization/all.css">
+  <link rel="stylesheet" href="stylesheets/ace-workspace.css"/>
 
-	<script src="bower_components/jquery/dist/jquery.js"></script>
-	<script src="bower_components/jquery-ui/jquery-ui.js"></script>
-	<script type="text/javascript">
 
+  <script src="bower_components/jquery/dist/jquery.js"></script>
+  <script src="bower_components/jquery-ui/jquery-ui.js"></script>
+  <script type="text/javascript">
       $(document).ready(function() {
 
         $("#addTab").click(function(){
@@ -34,23 +34,19 @@
   <script src="src/ace-build/ext-statusbar.js"></script>
   <script src="src/workspace.js"></script>
   <script src="src/jquery.ui-contextmenu.js"></script>
-   <script src="src/repository.js"></script>
+  <script src="src/repository.js"></script>
   <script src="src/ace-workspace-editor.js"></script>
 
 
-	<!--<SCRIPT type="text/javascript" src="index_files/jquery-latest.js"></SCRIPT>-->
-	<!--<SCRIPT type="text/javascript" src="index_files/jquery-ui-latest.js"></SCRIPT>-->
-	<!--<SCRIPT type="text/javascript" src="index_files/jquery.layout-latest.js"></SCRIPT>-->
+  <!--<SCRIPT type="text/javascript" src="index_files/jquery-latest.js"></SCRIPT>-->
+  <!--<SCRIPT type="text/javascript" src="index_files/jquery-ui-latest.js"></SCRIPT>-->
+  <!--<SCRIPT type="text/javascript" src="index_files/jquery.layout-latest.js"></SCRIPT>-->
 
-	<script>
-	$(function() {
-     	$( "#workspace" ).workspace();
-	 	  workspace = $( "#workspace" ).workspace("instance");
-	});
-	</script>
-	<script>
-
-
+<script>
+  $(function() {
+      $( "#workspace" ).workspace();
+      workspace = $( "#workspace" ).workspace("instance");
+  });
     var menuCommands = {}
     menuCommands["new"] = function(){
         workspace.open("","",AceWorkspaceEditor,{ace:window.ace,mode:"ace/mode/cql"})
@@ -101,90 +97,88 @@
   }
 
 
-		$(function() {
-			$( "#menu" ).menu({
-		    position: {
-		    	my:'left+10 bottom-15',
-		    	at:'left center'
-			   },
+    $(function() {
+      $( "#menu" ).menu({
+        position: {
+          my:'left+10 bottom-15',
+          at:'left center'
+         },
         select: function(event,ui){
           var command = menuCommands[ui.item[0].id]
           if(command){
             command();
           }
         }
-		  });    
-  	});
-	</script>
-	
+      });    
+    });
+  </script>
+  
 
-	
+  
 </HEAD>
 <body>
 <!-- START HEADER -->
 
 <div id="header">
-	<div class="logo"><img src="stylesheets/customization/Images/Everest_Logo.png"></div>
-		<div class="menuContainer">
-		<ul id="menu">
-			<li>File
-			<ul>
-			   <li id="new">New</li>
-			   <li id="close">Close</li>
+  <div class="logo"><img src="stylesheets/customization/Images/Everest_Logo.png"></div>
+    <div class="menuContainer">
+    <ul id="menu">
+      <li>File
+      <ul>
+         <li id="new">New</li>
+         <li id="close">Close</li>
          <li id="closeAll">Close All</li>
          <li id="closeOthers">Close Others</li>
-			   <div class="ui-menu-divider"></div>
-			   <li id="print">Print</li>
-    	 </ul>	
-		  </li>
-			
+         <div class="ui-menu-divider"></div>
+         <li id="print">Print</li>
+       </ul>  
+      </li>
+      
       <li>Edit
-		  	<ul>
-			   <li class="ui-state-disabled">Edit Sub Menu 1</li>
-			   <li>Edit Sub Menu 2</li>
-			   <li>Edit Sub Menu 3</li>
-    		</ul>	
-			</li>
-			<li>Find
-			   <ul>
-			     <li>Find Sub Menu 1</li>
-			     <li>Find Sub Menu 2</li>
-			     <li>Find Sub Menu 3</li>
-    		</ul>
-			</li>
-			<li>View
-		    <ul>
-			     <li class="ui-state-disabled">View Sub Menu 1</li>
-			     <li>View Sub Menu 2</li>
-			     <li>View Sub Menu 3</li>
-    		</ul>
-			</li>
-			<li>Preferences
-			   <ul>
-				    <li class="ui-state-disabled">Pref Menu Item 1</li>
-				    <li>Pref Menu Item 2</li>
-				    <li>Pref Menu Item 3</li>
-	    	</ul>
-			</li>
-			<li>Help
-			   <ul>
-				    <li class="ui-state-disabled">Pref Menu Item 1</li>
-				    <li ><span class="ui-icon ui-icon-print"></span>Pref Menu Item 2</li>
-				    <li>Pref Menu Item 3</li>
-	    	  </ul>
-			</li>
+        <ul>
+         <li class="ui-state-disabled">Edit Sub Menu 1</li>
+         <li>Edit Sub Menu 2</li>
+         <li>Edit Sub Menu 3</li>
+        </ul> 
+      </li>
+      <li>Find
+         <ul>
+           <li>Find Sub Menu 1</li>
+           <li>Find Sub Menu 2</li>
+           <li>Find Sub Menu 3</li>
+        </ul>
+      </li>
+      <li>View
+        <ul>
+           <li class="ui-state-disabled">View Sub Menu 1</li>
+           <li>View Sub Menu 2</li>
+           <li>View Sub Menu 3</li>
+        </ul>
+      </li>
+      <li>Preferences
+         <ul>
+            <li class="ui-state-disabled">Pref Menu Item 1</li>
+            <li>Pref Menu Item 2</li>
+            <li>Pref Menu Item 3</li>
+        </ul>
+      </li>
+      <li>Help
+         <ul>
+            <li class="ui-state-disabled">Pref Menu Item 1</li>
+            <li ><span class="ui-icon ui-icon-print"></span>Pref Menu Item 2</li>
+            <li>Pref Menu Item 3</li>
+          </ul>
+      </li>
      </ul>
-		</div>
-	<div class="login">ehathaway@mitre.org</div>
+    </div>
+  <div class="login">ehathaway@mitre.org</div>
 
-<div class="actionBar">
-	<input id="mybutton" type="button" value="Slide" class="ui-state-default ui-corner-all ui-button-icon-only">
 </div>
 <!-- END HEADER -->
 
 <div class="ace-container" >
 
-<!-- START TREE PANEL -->	
+<!-- START TREE PANEL --> 
 <div id="panel" class="treepanel">
 add tree selector
 </div>
@@ -195,27 +189,27 @@ add tree selector
 
 
 <div class="ace">
-   	 <div class="actionBar">
-	<input id="mybutton" type="button" value="Slide" class="ui-state-default ui-corner-all ui-button-icon-only ui-icon  ui-icon-arrowthickstop-1-w" style="cursor: pointer">
-	<button id="addTab" class="icon">Add Tab</button>
-	</div>
+     <div class="actionBar">
+  <input id="mybutton" type="button" value="Slide" class="ui-state-default ui-corner-all ui-button-icon-only ui-icon  ui-icon-arrowthickstop-1-w" style="cursor: pointer">
+  <button id="addTab" class="icon">Add Tab</button>
+  </div>
 
-	<div id="workspace"></div>
+  <div id="workspace"></div>
   </div>  
 
-  </div>	
-	
+  </div>  
+  
 
 
 <script>
-	//dom ready handler so that the script is executed after the dom is loaded
-jQuery(function () {
+  //dom ready handler so that the script is executed after the dom is loaded
+   jQuery(function () {
     //register the click handler to an element with id mybutton
     $('#mybutton').click(function () {
         $("#panel").toggle("slide");
     });
 })
-</script>	
+</script> 
 <div id="footer" class="ui-widget-content">
 status bar
 </div>

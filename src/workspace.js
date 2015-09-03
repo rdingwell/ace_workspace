@@ -178,7 +178,7 @@ function Tab(li){
       editor.$tab = li
       self = this;
       $(".workspace-tab").contextmenu({
-
+          zIndex: 1000,
           menu: [
               {title: "save", cmd: "save", uiIcon: "ui-icon-save"},
               {title: "close", cmd: "close", uiIcon: "ui-icon-close"},
